@@ -17,25 +17,19 @@ const DEMO_MODES = [
   },
   {
     value: 'sync-marketplace',
-    label: 'Sync — Option 1: Marketplace',
+    label: 'Sync — Marketplace',
     badge: '⭐ Minimal effort',
     description: 'Redirect to a Chift-hosted Marketplace. User must create a Chift account.',
   },
   {
-    value: 'sync-marketplace-oauth2',
-    label: 'Sync — Option 2: Marketplace + OAuth2',
-    badge: '⭐⭐ Low effort',
-    description: 'Same Marketplace but user authenticates via your OAuth2 — no Chift account needed.',
-  },
-  {
     value: 'sync-api',
-    label: 'Sync — Option 3: API-driven',
+    label: 'Sync — API-driven',
     badge: '⭐⭐⭐ Medium effort',
     description: 'Creates a sync instance via API and redirects the user to a Chift-hosted sync page.',
   },
   {
     value: 'sync-embedded',
-    label: 'Sync — Option 4: Fully Embedded',
+    label: 'Sync — Fully Embedded',
     badge: '⭐⭐⭐⭐ High effort',
     description: 'Entire sync flow embedded in your app via iframe. No Chift UI visible.',
   },
@@ -81,7 +75,7 @@ export default function Settings() {
 
   const isApiMode     = form.demoMode === 'unified-api-generic' || form.demoMode === 'unified-api-picker';
   const isSyncApi     = form.demoMode === 'sync-api';
-  const isMarketplace = form.demoMode === 'sync-marketplace' || form.demoMode === 'sync-marketplace-oauth2';
+  const isMarketplace = form.demoMode === 'sync-marketplace';
   const isEmbedded    = form.demoMode === 'sync-embedded';
 
   return (
@@ -283,7 +277,7 @@ export default function Settings() {
                   onChange={(e) => set('consumerName', e.target.value)}
                 />
               </Field>
-              <Field label="Sync ID" hint="UUID of the sync to instantiate.">
+              <Field label="Sync ID" hint="UUID of the sync — used as syncid in POST /consumers/{id}/syncs.">
                 <input
                   type="text"
                   className="form-control font-monospace"
@@ -293,8 +287,8 @@ export default function Settings() {
                 />
               </Field>
               <Field
-                label="Integration IDs"
-                hint="Comma-separated integration IDs to pre-select for the user."
+                label={<>Integration IDs <span className="text-muted fw-normal">(optional)</span></>}
+                hint="Comma-separated integration IDs to highlight a specific connector for the user."
               >
                 <input
                   type="text"

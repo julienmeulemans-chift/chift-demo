@@ -45,9 +45,9 @@ export default function Dashboard() {
             <i className="bi bi-plug-fill text-primary" style={{ fontSize: 24 }} />
           </div>
           <div>
-            <h6 className="fw-semibold mb-1">Financial Integrations</h6>
+            <h6 className="fw-semibold mb-1">Accounting Integrations</h6>
             <p className="text-muted small mb-3">
-              Connect your financial software to automatically sync your accounting data.
+              Connect your accounting software to automatically sync your accounting data.
               Head to the <strong>Integrations</strong> page to get started.
             </p>
             <button className="btn btn-primary btn-sm" onClick={() => navigate('/integrations')}>

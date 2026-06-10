@@ -183,42 +183,6 @@ export default function UnifiedApiPickerMode() {
   if (status === 'success' || (status === 'loading' && clientCount !== null)) {
     return (
       <div style={{ maxWidth: 680 }}>
-        {/* Info banner */}
-        <div className="alert alert-light border mb-4" style={{ padding: 0, overflow: 'hidden' }}>
-          <div
-            className="d-flex gap-3 align-items-start"
-            style={{ padding: '12px 16px', cursor: 'pointer', userSelect: 'none' }}
-            onClick={() => setTechOpen((o) => !o)}
-          >
-            <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
-            <div className="small flex-grow-1">
-              <strong>Unified API — Connector Picker</strong><br />
-              End-user chose a specific connector. The app called <code>POST /connections</code> with <code>integrationid</code>.
-            </div>
-            <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
-          </div>
-          {techOpen && (
-            <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
-              <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
-                Technical details
-              </div>
-              <div className="d-flex flex-column gap-2 small text-muted">
-                <div><StepBadge n={1} />Fetch connectors — <code>GET /integrations?status=active</code></div>
-                <div><StepBadge n={2} />User picks a connector</div>
-                <div><StepBadge n={3} />Create consumer + connection — <code>POST /consumers/{'{id}'}/connections</code> with <code>integrationid</code></div>
-                <div><StepBadge n={4} />Redirect → OAuth2 on Chift</div>
-                <div><StepBadge n={5} />Return here — <code>GET /consumers/{'{id}'}/connections</code> + <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
-              </div>
-              {config.consumerId && (
-                <div className="alert alert-info small mb-0 mt-3 py-2">
-                  <i className="bi bi-person-badge me-1" />
-                  Consumer: <code>{config.consumerId}</code>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
         {error && (
           <div className="alert alert-danger d-flex gap-2 align-items-start mb-4">
             <i className="bi bi-x-circle-fill flex-shrink-0 mt-1" />
@@ -229,7 +193,7 @@ export default function UnifiedApiPickerMode() {
           </div>
         )}
 
-        <div className="card border-0 shadow-sm">
+        <div className="card border-0 shadow-sm" style={{ background: 'rgba(13, 110, 253, 0.04)' }}>
           <div className="card-body p-4">
             {status === 'loading' ? (
               <div className="d-flex align-items-center gap-3 py-2">
@@ -288,6 +252,42 @@ export default function UnifiedApiPickerMode() {
             )}
           </div>
         </div>
+
+        {/* Info banner */}
+        <div className="alert alert-light border mt-4" style={{ padding: 0, overflow: 'hidden' }}>
+          <div
+            className="d-flex gap-3 align-items-start"
+            style={{ padding: '12px 16px', cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => setTechOpen((o) => !o)}
+          >
+            <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
+            <div className="small flex-grow-1">
+              <strong>Unified API — Connector Picker</strong><br />
+              End-user chose a specific connector. The app called <code>POST /connections</code> with <code>integrationid</code>.
+            </div>
+            <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
+          </div>
+          {techOpen && (
+            <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
+              <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
+                Technical details
+              </div>
+              <div className="d-flex flex-column gap-2 small text-muted">
+                <div><StepBadge n={1} />Fetch connectors — <code>GET /integrations?status=active</code></div>
+                <div><StepBadge n={2} />User picks a connector</div>
+                <div><StepBadge n={3} />Create consumer + connection — <code>POST /consumers/{'{id}'}/connections</code> with <code>integrationid</code></div>
+                <div><StepBadge n={4} />Redirect → OAuth2 on Chift</div>
+                <div><StepBadge n={5} />Return here — <code>GET /consumers/{'{id}'}/connections</code> + <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
+              </div>
+              {config.consumerId && (
+                <div className="alert alert-info small mb-0 mt-3 py-2">
+                  <i className="bi bi-person-badge me-1" />
+                  Consumer: <code>{config.consumerId}</code>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -295,43 +295,6 @@ export default function UnifiedApiPickerMode() {
   // ── IDLE — connector picker grid ──────────────────────────────────
   return (
     <div style={{ maxWidth: 800 }}>
-      {/* Info banner */}
-      <div className="alert alert-light border mb-4" style={{ padding: 0, overflow: 'hidden' }}>
-        <div
-          className="d-flex gap-3 align-items-start"
-          style={{ padding: '12px 16px', cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => setTechOpen((o) => !o)}
-        >
-          <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
-          <div className="small flex-grow-1">
-            <strong>Unified API — Connector Picker</strong><br />
-            Fetches active Accounting connectors via <code>GET /integrations?status=active</code>,
-            shows each as a card. On click, calls <code>POST /connections</code> with <code>integrationid</code>.
-          </div>
-          <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
-        </div>
-        {techOpen && (
-          <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
-            <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
-              Technical details
-            </div>
-            <div className="d-flex flex-column gap-2 small text-muted">
-              <div><StepBadge n={1} />Fetch connectors — <code>GET /integrations?status=active</code>, filter <code>api === "Accounting"</code></div>
-              <div><StepBadge n={2} />User picks a connector below</div>
-              <div><StepBadge n={3} />Create consumer + connection — <code>POST /consumers/{'{id}'}/connections</code> with <code>integrationid</code></div>
-              <div><StepBadge n={4} />Redirect → OAuth2 authorization on Chift</div>
-              <div><StepBadge n={5} />Return here — <code>GET /consumers/{'{id}'}/connections</code> + <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
-            </div>
-            {config.consumerId && (
-              <div className="alert alert-info small mb-0 mt-3 py-2">
-                <i className="bi bi-person-badge me-1" />
-                Existing consumer: <code>{config.consumerId}</code> — consumer creation will be skipped.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {!isConfigured && (
         <div className="alert alert-warning d-flex gap-2 align-items-center mb-4">
           <i className="bi bi-exclamation-triangle-fill flex-shrink-0" />
@@ -350,7 +313,7 @@ export default function UnifiedApiPickerMode() {
       )}
 
       {/* Connector grid */}
-      <div>
+      <div className="rounded-3 p-4 shadow-sm" style={{ background: 'rgba(13, 110, 253, 0.04)' }}>
         <div className="d-flex align-items-center justify-content-between mb-3">
           <h6 className="mb-0 fw-semibold">Choose your accounting software</h6>
           {isConfigured && (
@@ -410,6 +373,43 @@ export default function UnifiedApiPickerMode() {
             );
           })}
         </div>
+      </div>
+
+      {/* Info banner */}
+      <div className="alert alert-light border mt-4" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          className="d-flex gap-3 align-items-start"
+          style={{ padding: '12px 16px', cursor: 'pointer', userSelect: 'none' }}
+          onClick={() => setTechOpen((o) => !o)}
+        >
+          <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
+          <div className="small flex-grow-1">
+            <strong>Unified API — Connector Picker</strong><br />
+            Fetches active Accounting connectors via <code>GET /integrations?status=active</code>,
+            shows each as a card. On click, calls <code>POST /connections</code> with <code>integrationid</code>.
+          </div>
+          <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
+        </div>
+        {techOpen && (
+          <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
+            <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
+              Technical details
+            </div>
+            <div className="d-flex flex-column gap-2 small text-muted">
+              <div><StepBadge n={1} />Fetch connectors — <code>GET /integrations?status=active</code>, filter <code>api === "Accounting"</code></div>
+              <div><StepBadge n={2} />User picks a connector below</div>
+              <div><StepBadge n={3} />Create consumer + connection — <code>POST /consumers/{'{id}'}/connections</code> with <code>integrationid</code></div>
+              <div><StepBadge n={4} />Redirect → OAuth2 authorization on Chift</div>
+              <div><StepBadge n={5} />Return here — <code>GET /consumers/{'{id}'}/connections</code> + <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
+            </div>
+            {config.consumerId && (
+              <div className="alert alert-info small mb-0 mt-3 py-2">
+                <i className="bi bi-person-badge me-1" />
+                Existing consumer: <code>{config.consumerId}</code> — consumer creation will be skipped.
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

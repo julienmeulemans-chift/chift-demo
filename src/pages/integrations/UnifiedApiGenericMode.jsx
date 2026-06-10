@@ -156,44 +156,6 @@ export default function UnifiedApiGenericMode() {
 
   return (
     <div style={{ maxWidth: 680 }}>
-      {/* Info banner — collapsible technical details */}
-      <div className="alert alert-light border mb-4" style={{ padding: 0, overflow: 'hidden' }}>
-        <div
-          className="d-flex gap-3 align-items-start"
-          style={{ padding: '12px 16px', cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => setTechOpen((o) => !o)}
-        >
-          <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
-          <div className="small flex-grow-1">
-            <strong>Unified API — Generic</strong><br />
-            A single "Connect" button sends the user to Chift where they choose their accounting
-            software from all available connectors. Your app only specifies the{' '}
-            <code>apis: ["Accounting"]</code> filter.
-          </div>
-          <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
-        </div>
-        {techOpen && (
-          <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
-            <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
-              Technical details
-            </div>
-            <div className="d-flex flex-column gap-2 small text-muted">
-              <div><StepBadge n={1} />Authenticate — <code>POST /token</code></div>
-              <div><StepBadge n={2} />Create consumer — <code>POST /consumers</code></div>
-              <div><StepBadge n={3} />Create connection — <code>POST /consumers/{'{id}'}/connections</code> with <code>apis: ["Accounting"]</code></div>
-              <div><StepBadge n={4} />Redirect end-user → picks accounting software on Chift</div>
-              <div><StepBadge n={5} />Return here — <code>GET /consumers/{'{id}'}/connections</code> + <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
-            </div>
-            {config.consumerId && (
-              <div className="alert alert-info small mb-0 mt-3 py-2">
-                <i className="bi bi-person-badge me-1" />
-                Existing consumer: <code>{config.consumerId}</code> — Steps 1–2 will be skipped.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {!isConfigured && status !== 'loading' && (
         <div className="alert alert-warning d-flex gap-2 align-items-center mb-4">
           <i className="bi bi-exclamation-triangle-fill flex-shrink-0" />
@@ -211,7 +173,7 @@ export default function UnifiedApiGenericMode() {
         </div>
       )}
 
-      <div className="card border-0 shadow-sm">
+      <div className="card border-0 shadow-sm" style={{ background: 'rgba(13, 110, 253, 0.04)' }}>
         <div className="card-body p-4">
 
           {/* IDLE */}
@@ -292,6 +254,44 @@ export default function UnifiedApiGenericMode() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Info banner — collapsible technical details */}
+      <div className="alert alert-light border mt-4" style={{ padding: 0, overflow: 'hidden' }}>
+        <div
+          className="d-flex gap-3 align-items-start"
+          style={{ padding: '12px 16px', cursor: 'pointer', userSelect: 'none' }}
+          onClick={() => setTechOpen((o) => !o)}
+        >
+          <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
+          <div className="small flex-grow-1">
+            <strong>Unified API — Generic</strong><br />
+            A single "Connect" button sends the user to Chift where they choose their accounting
+            software from all available connectors. Your app only specifies the{' '}
+            <code>apis: ["Accounting"]</code> filter.
+          </div>
+          <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
+        </div>
+        {techOpen && (
+          <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
+            <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
+              Technical details
+            </div>
+            <div className="d-flex flex-column gap-2 small text-muted">
+              <div><StepBadge n={1} />Authenticate — <code>POST /token</code></div>
+              <div><StepBadge n={2} />Create consumer — <code>POST /consumers</code></div>
+              <div><StepBadge n={3} />Create connection — <code>POST /consumers/{'{id}'}/connections</code> with <code>apis: ["Accounting"]</code></div>
+              <div><StepBadge n={4} />Redirect end-user → picks accounting software on Chift</div>
+              <div><StepBadge n={5} />Return here — <code>GET /consumers/{'{id}'}/connections</code> + <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
+            </div>
+            {config.consumerId && (
+              <div className="alert alert-info small mb-0 mt-3 py-2">
+                <i className="bi bi-person-badge me-1" />
+                Existing consumer: <code>{config.consumerId}</code> — Steps 1–2 will be skipped.
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,14 +5,8 @@ export default function SyncMarketplaceMode() {
   const { config }              = useChiftConfig();
   const [techOpen, setTechOpen] = useState(false);
 
-  const base = config.marketplaceSlug
+  const marketplaceUrl = config.marketplaceSlug
     ? `https://marketplaces.chift.app/en/${config.marketplaceSlug}`
-    : null;
-
-  const marketplaceUrl = base
-    ? config.syncIntegrationId
-      ? `${base}/apps/${config.syncIntegrationId}`
-      : base
     : null;
 
   const title = 'Sync — Marketplace';

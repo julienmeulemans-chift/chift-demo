@@ -17,15 +17,27 @@ const DEMO_MODES = [
   },
   {
     value: 'sync-marketplace',
-    label: 'Sync — Marketplace',
+    label: 'Marketplace — Generic',
     badge: '⭐ Minimal effort',
     description: 'Redirect to a Chift-hosted Marketplace. User must create a Chift account.',
   },
   {
+    value: 'sync-marketplace-picker',
+    label: 'Marketplace — Connector Picker',
+    badge: '⭐⭐ Low effort',
+    description: 'Shows active Accounting connectors. User picks one, then is redirected to the Marketplace with that connector pre-selected (/apps/{integration_id}).',
+  },
+  {
     value: 'sync-api',
     label: 'Sync — API-driven',
-    badge: '⭐⭐⭐ Medium effort',
+    badge: '⭐⭐ Low effort',
     description: 'Creates a sync instance via API and redirects the user to a Chift-hosted sync page.',
+  },
+  {
+    value: 'sync-api-picker',
+    label: 'Sync — API-driven + Connector Picker',
+    badge: '⭐⭐⭐ Medium effort',
+    description: 'Shows active Accounting connectors for the user to pick. Passes the selected integrationid when creating the sync URL — connector selection on Chift\'s side is skipped.',
   },
   {
     value: 'sync-embedded',
@@ -73,10 +85,11 @@ export default function Settings() {
     setConfig(updated);
   };
 
-  const isApiMode     = form.demoMode === 'unified-api-generic' || form.demoMode === 'unified-api-picker';
-  const isSyncApi     = form.demoMode === 'sync-api';
-  const isMarketplace = form.demoMode === 'sync-marketplace';
-  const isEmbedded    = form.demoMode === 'sync-embedded';
+  const isApiMode       = form.demoMode === 'unified-api-generic' || form.demoMode === 'unified-api-picker';
+  const isSyncApi       = form.demoMode === 'sync-api';
+  const isSyncApiPicker = form.demoMode === 'sync-api-picker';
+  const isMarketplace   = form.demoMode === 'sync-marketplace' || form.demoMode === 'sync-marketplace-picker';
+  const isEmbedded      = form.demoMode === 'sync-embedded';
 
   return (
     <div style={{ maxWidth: 680 }}>
@@ -245,18 +258,6 @@ export default function Settings() {
                   onChange={(e) => set('marketplaceSlug', e.target.value)}
                 />
               </Field>
-              <Field
-                label={<>Integration ID <span className="text-muted fw-normal">(optional)</span></>}
-                hint="If set, opens a direct link to this specific connector. Leave empty to show the full marketplace."
-              >
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="e.g. 1007 — leave empty for full marketplace"
-                  value={form.syncIntegrationId}
-                  onChange={(e) => set('syncIntegrationId', e.target.value)}
-                />
-              </Field>
             </div>
           </div>
         )}
@@ -296,6 +297,54 @@ export default function Settings() {
                   placeholder="e.g. 1007, 2001"
                   value={form.integrationIds}
                   onChange={(e) => set('integrationIds', e.target.value)}
+                />
+              </Field>
+              <Field
+                label={<>Consumer ID <span className="text-muted fw-normal">(auto-populated)</span></>}
+                hint="Leave empty to auto-create on first connect."
+              >
+                <div className="input-group">
+                  <input
+                    type="text"
+                    className="form-control font-monospace"
+                    placeholder="Will be filled automatically"
+                    value={form.consumerId}
+                    onChange={(e) => set('consumerId', e.target.value)}
+                  />
+                  {form.consumerId && (
+                    <button type="button" className="btn btn-outline-secondary" onClick={resetConsumer}>
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </Field>
+            </div>
+          </div>
+        )}
+
+        {/* ── Sync API-driven + Connector Picker ─────────── */}
+        {isSyncApiPicker && (
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="card-header bg-white border-bottom py-3 px-4">
+              <h6 className="mb-0 fw-semibold">API-driven Sync + Connector Picker Settings</h6>
+            </div>
+            <div className="card-body px-4 pt-3 pb-1">
+              <Field label="Consumer Name">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Demo Consumer"
+                  value={form.consumerName}
+                  onChange={(e) => set('consumerName', e.target.value)}
+                />
+              </Field>
+              <Field label="Sync ID" hint="UUID of the sync — used as syncid in POST /consumers/{id}/syncs.">
+                <input
+                  type="text"
+                  className="form-control font-monospace"
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={form.syncId}
+                  onChange={(e) => set('syncId', e.target.value)}
                 />
               </Field>
               <Field

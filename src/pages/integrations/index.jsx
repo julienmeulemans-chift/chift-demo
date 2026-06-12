@@ -3,14 +3,18 @@ import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
 import UnifiedApiGenericMode from './UnifiedApiGenericMode.jsx';
 import UnifiedApiPickerMode from './UnifiedApiPickerMode.jsx';
 import SyncMarketplaceMode from './SyncMarketplaceMode.jsx';
+import SyncMarketplacePickerMode from './SyncMarketplacePickerMode.jsx';
 import SyncApiDrivenMode from './SyncApiDrivenMode.jsx';
+import SyncApiDrivenPickerMode from './SyncApiDrivenPickerMode.jsx';
 import SyncEmbeddedMode from './SyncEmbeddedMode.jsx';
 
 const MODE_LABELS = {
   'unified-api-generic':     'Unified API — Generic',
   'unified-api-picker':      'Unified API — Connector Picker',
-  'sync-marketplace':        'Sync — Marketplace',
+  'sync-marketplace':        'Marketplace — Generic',
+  'sync-marketplace-picker': 'Marketplace — Connector Picker',
   'sync-api':                'Sync — API-driven',
+  'sync-api-picker':         'Sync — API-driven + Connector Picker',
   'sync-embedded':           'Sync — Fully Embedded',
 };
 
@@ -30,7 +34,11 @@ export default function Integrations() {
 
       {config.demoMode === 'sync-marketplace' && <SyncMarketplaceMode />}
 
+      {config.demoMode === 'sync-marketplace-picker' && <SyncMarketplacePickerMode />}
+
       {config.demoMode === 'sync-api' && <SyncApiDrivenMode />}
+
+      {config.demoMode === 'sync-api-picker' && <SyncApiDrivenPickerMode />}
 
       {config.demoMode === 'sync-embedded' && <SyncEmbeddedMode />}
     </div>

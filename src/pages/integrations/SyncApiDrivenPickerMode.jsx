@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, extractCount } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, extractCount, DOC_URLS } from '../../lib/chiftApi.js';
+import { useApiLog } from '../../hooks/useApiLog.js';
+import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
 function StepBadge({ n }) {
   return (
@@ -12,9 +14,10 @@ function StepBadge({ n }) {
 }
 
 export default function SyncApiDrivenPickerMode() {
-  const { config, setConfig } = useChiftConfig();
-  const [searchParams]        = useSearchParams();
-  const navigate              = useNavigate();
+  const { config, setConfig }                               = useChiftConfig();
+  const [searchParams]                                      = useSearchParams();
+  const navigate                                            = useNavigate();
+  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog();
 
   const [integrations, setIntegrations] = useState([]);
   const [intLoading,   setIntLoading]   = useState(false);
@@ -52,34 +55,40 @@ export default function SyncApiDrivenPickerMode() {
   const loadIntegrations = async () => {
     setIntLoading(true);
     setIntError(null);
+    clearLog();
     try {
       const token = await getToken(config);
+      logCall({ id: 'integrations_load', method: 'GET',
+        endpoint: '/integrations?status=active',
+        docUrl:   DOC_URLS.integrations });
       const res = await fetch(
         `${config.baseUrl}/integrations?status=active`,
         { headers: buildHeaders(token, config.accountId) }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status} — ${await res.text()}`);
       const data = await res.json();
+      resolveCall('integrations_load', data);
       const list = Array.isArray(data) ? data : (data.results ?? data.items ?? []);
-      setIntegrations(list.filter((i) => i.api === 'Accounting'));
+      setIntegrations(list);
     } catch (err) {
+      failCall('integrations_load', err.message);
       setIntError(`Could not load integrations: ${err.message}`);
     } finally {
       setIntLoading(false);
     }
   };
 
-  // ── Fetch connection info (best-effort, non-throwing) ─────────────
+  // ── Fetch connection info for logo/display (best-effort, returns conn) ──
   const fetchConnectionInfo = async (consumerId, token) => {
     try {
       const res = await fetch(
         `${config.baseUrl}/consumers/${consumerId}/connections`,
         { headers: buildHeaders(token, config.accountId) }
       );
-      if (!res.ok) return;
+      if (!res.ok) return null;
       const list = await res.json();
-      const conn = list.find((c) => c.api === 'Accounting') ?? null;
-      if (!conn) return;
+      const conn = Array.isArray(list) ? list[0] ?? null : null;
+      if (!conn) return null;
       setConnection(conn);
       try {
         const logoRes = await fetch(
@@ -91,30 +100,43 @@ export default function SyncApiDrivenPickerMode() {
           setLogoSrc(`data:image/png;base64,${logoData.data}`);
         }
       } catch { /* logo optional */ }
-    } catch { /* silent */ }
+      return conn;
+    } catch { return null; }
   };
 
   const fetchAllData = async (consumerId) => {
     setStatus('loading');
     setError(null);
+    clearLog();
     try {
       const token = await getToken(config);
-      const [, clientsRes] = await Promise.all([
-        fetchConnectionInfo(consumerId, token),
-        fetch(
-          `${config.baseUrl}/consumers/${consumerId}/accounting/clients`,
-          { headers: buildHeaders(token, config.accountId) }
-        ),
-      ]);
+      const hdrs  = buildHeaders(token, config.accountId);
+
+      // Fetch connection info silently (for display/logo)
+      const conn = await fetchConnectionInfo(consumerId, token);
+
+      // No connection — stay on picker screen, skip clients call
+      if (!conn) { setStatus('idle'); return; }
+
+      // GET accounting clients (only when connection exists)
+      logCall({ id: 'clients_load', method: 'GET',
+        endpoint: `/consumers/${consumerId}/accounting/clients`,
+        docUrl:   DOC_URLS.clients });
+      const clientsRes = await fetch(
+        `${config.baseUrl}/consumers/${consumerId}/accounting/clients`,
+        { headers: hdrs }
+      );
       if (!clientsRes.ok) {
         const body = await clientsRes.json().catch(() => ({}));
+        failCall('clients_load', `HTTP ${clientsRes.status} — ${body.error_code ?? JSON.stringify(body)}`);
         if (body.error_code === 'ERROR_NO_ACTIVE_CONNECTION') {
-          setStatus('idle');
+          setStatus('success'); // connection exists but not yet active — show card
           return;
         }
         throw new Error(`HTTP ${clientsRes.status} — ${JSON.stringify(body)}`);
       }
       const data = await clientsRes.json();
+      resolveCall('clients_load', data);
       setClientCount(extractCount(data));
       setStatus('success');
     } catch (err) {
@@ -128,44 +150,58 @@ export default function SyncApiDrivenPickerMode() {
     if (!isConfigured) { setError('Please set Client ID, Client Secret and Sync ID in Settings.'); return; }
     setConnecting(integration.integrationid);
     setError(null);
+    clearLog();
     try {
       const token = await getToken(config);
       const hdrs  = buildHeaders(token, config.accountId);
       let consumerId = config.consumerId;
 
-      // Step 1 — Create consumer if needed
+      // Create consumer if needed
       if (!consumerId) {
+        const consumerBody = {
+          name:               config.consumerName || 'Demo Consumer',
+          redirect_url:       `${window.location.origin}/integrations?chift_return=1`,
+          internal_reference: `demo_${Date.now()}`,
+        };
+        logCall({ id: 'consumer_create', method: 'POST',
+          endpoint: '/consumers',
+          docUrl:   DOC_URLS.consumers_post,
+          requestBody: consumerBody });
         const r = await fetch(`${config.baseUrl}/consumers`, {
-          method: 'POST',
-          headers: hdrs,
-          body: JSON.stringify({
-            name:               config.consumerName || 'Demo Consumer',
-            redirect_url:       `${window.location.origin}/integrations?chift_return=1`,
-            internal_reference: `demo_${Date.now()}`,
-          }),
+          method: 'POST', headers: hdrs, body: JSON.stringify(consumerBody),
         });
-        if (!r.ok) throw new Error(`Consumer creation failed (${r.status}): ${await r.text()}`);
+        if (!r.ok) {
+          failCall('consumer_create', `HTTP ${r.status}: ${await r.text()}`);
+          throw new Error(`Consumer creation failed (${r.status})`);
+        }
         const consumer = await r.json();
+        resolveCall('consumer_create', consumer);
         consumerId = consumer.consumerid ?? consumer.id ?? consumer.consumer_id;
         if (!consumerId) throw new Error('API returned no consumer ID.');
         setConfig({ consumerId });
       }
 
-      // Step 2 — Get sync redirect URL with pre-selected connector
+      // Get sync redirect URL with pre-selected connector
+      const syncBody = {
+        syncid:         config.syncId,
+        integrationids: [String(integration.integrationid)],
+      };
+      logCall({ id: 'sync_create', method: 'POST',
+        endpoint: `/consumers/${consumerId}/syncs`,
+        docUrl:   DOC_URLS.syncs,
+        requestBody: syncBody });
       const r = await fetch(`${config.baseUrl}/consumers/${consumerId}/syncs`, {
-        method: 'POST',
-        headers: hdrs,
-        body: JSON.stringify({
-          syncid:         config.syncId,
-          integrationids: [String(integration.integrationid)],
-        }),
+        method: 'POST', headers: hdrs, body: JSON.stringify(syncBody),
       });
-      if (!r.ok) throw new Error(`Sync URL retrieval failed (${r.status}): ${await r.text()}`);
-      const { url } = await r.json();
-      if (!url) throw new Error('No redirect URL returned by the API.');
+      if (!r.ok) {
+        failCall('sync_create', `HTTP ${r.status}: ${await r.text()}`);
+        throw new Error(`Sync URL retrieval failed (${r.status})`);
+      }
+      const syncRes = await r.json();
+      resolveCall('sync_create', syncRes);
+      if (!syncRes.url) throw new Error('No redirect URL returned by the API.');
 
-      // Step 3 — Redirect to Chift-hosted sync page (connector pre-selected)
-      window.location.href = url;
+      window.location.href = syncRes.url;
     } catch (err) {
       setError(err.message);
       setConnecting(null);
@@ -180,6 +216,7 @@ export default function SyncApiDrivenPickerMode() {
     setLogoSrc(null);
     setError(null);
     setConnecting(null);
+    clearLog();
   };
 
   // ── SUCCESS state ─────────────────────────────────────────────────
@@ -265,20 +302,23 @@ export default function SyncApiDrivenPickerMode() {
           >
             <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
             <div className="small flex-grow-1">
-              <strong>Sync — API-driven + Connector Picker</strong><br />
-              End-user chose a connector. The app passed <code>integrationids</code> to <code>POST /consumers/{'{id}'}/syncs</code>.
+              <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                <strong>Sync — API-driven + Connector Picker</strong>
+                <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>⭐⭐⭐ Medium effort</span>
+              </div>
+              Shows active connectors for the user to pick. Passes the selected <code>integrationid</code> when creating the sync URL — connector selection on Chift's side is skipped.
             </div>
             <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
           </div>
           {techOpen && (
             <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
               <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
-                Technical details
+                Technical flow
               </div>
               <div className="d-flex flex-column gap-2 small text-muted">
-                <div><StepBadge n={1} />Fetch connectors — <code>GET /integrations?status=active</code></div>
-                <div><StepBadge n={2} />User picks a connector</div>
-                <div><StepBadge n={3} />Create consumer — <code>POST /consumers</code></div>
+                <div><StepBadge n={1} />Create consumer if none exists for the current end-user — <code>POST /consumers</code></div>
+                <div><StepBadge n={2} />Fetch connectors — <code>GET /integrations?status=active</code></div>
+                <div><StepBadge n={3} />User picks a connector</div>
                 <div><StepBadge n={4} />Get sync URL — <code>POST /consumers/{'{id}'}/syncs</code> with <code>syncid</code> + <code>integrationids</code></div>
                 <div><StepBadge n={5} />Redirect end-user to Chift-hosted sync page (connector pre-selected)</div>
                 <div><StepBadge n={6} />Return here — <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
@@ -289,6 +329,7 @@ export default function SyncApiDrivenPickerMode() {
                   Consumer: <code>{config.consumerId}</code>
                 </div>
               )}
+              <ApiCallLog calls={calls} onClear={clearLog} />
             </div>
           )}
         </div>
@@ -343,7 +384,7 @@ export default function SyncApiDrivenPickerMode() {
         {intError && <div className="alert alert-danger small">{intError}</div>}
 
         {!intLoading && !intError && integrations.length === 0 && isConfigured && (
-          <div className="text-muted small py-3">No active Accounting connectors found.</div>
+          <div className="text-muted small py-3">No active connectors found.</div>
         )}
 
         <div className="row g-3 mt-1">
@@ -394,21 +435,23 @@ export default function SyncApiDrivenPickerMode() {
         >
           <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
           <div className="small flex-grow-1">
-            <strong>Sync — API-driven + Connector Picker</strong><br />
-            Fetches active Accounting connectors, user picks one, then the app retrieves a sync URL
-            with <code>integrationids</code> pre-set — skipping the connector selection on Chift's side.
+            <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <strong>Sync — API-driven + Connector Picker</strong>
+              <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>⭐⭐⭐ Medium effort</span>
+            </div>
+            Shows active connectors for the user to pick. Passes the selected <code>integrationid</code> when creating the sync URL — connector selection on Chift's side is skipped.
           </div>
           <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
         </div>
         {techOpen && (
           <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
             <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
-              Technical details
+              Technical flow
             </div>
             <div className="d-flex flex-column gap-2 small text-muted">
-              <div><StepBadge n={1} />Fetch connectors — <code>GET /integrations?status=active</code>, filter <code>api === "Accounting"</code></div>
-              <div><StepBadge n={2} />User picks a connector below</div>
-              <div><StepBadge n={3} />Create consumer — <code>POST /consumers</code></div>
+              <div><StepBadge n={1} />Create consumer if none exists for the current end-user — <code>POST /consumers</code></div>
+              <div><StepBadge n={2} />Fetch connectors — <code>GET /integrations?status=active</code></div>
+              <div><StepBadge n={3} />User picks a connector</div>
               <div><StepBadge n={4} />Get sync URL — <code>POST /consumers/{'{id}'}/syncs</code> with <code>syncid</code> + <code>integrationids: [selectedId]</code></div>
               <div><StepBadge n={5} />Redirect end-user to Chift-hosted sync page (connector pre-selected)</div>
               <div><StepBadge n={6} />Return here — <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
@@ -419,6 +462,7 @@ export default function SyncApiDrivenPickerMode() {
                 Existing consumer: <code>{config.consumerId}</code> — consumer creation will be skipped.
               </div>
             )}
+            <ApiCallLog calls={calls} onClear={clearLog} />
           </div>
         )}
       </div>

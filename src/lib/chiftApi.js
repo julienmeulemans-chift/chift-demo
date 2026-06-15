@@ -54,6 +54,18 @@ export function invalidateToken() {
   cache = { token: null, expiresAt: 0 };
 }
 
+/** API documentation URLs — used in ApiCallLog to make endpoints clickable. */
+export const DOC_URLS = {
+  token:             'https://docs.chift.eu/developer-guides/create-api-key',
+  integrations:      'https://docs.chift.eu/api-reference/endpoints/integrations/get-list-of-integrations',
+  consumers_post:    'https://docs.chift.eu/api-reference/endpoints/consumers/create-new-consumer',
+  connections_get:   'https://docs.chift.eu/api-reference/endpoints/connections/get-connections',
+  connections_post:  'https://docs.chift.eu/api-reference/endpoints/connections/add-new-connection',
+  connections_patch: 'https://docs.chift.eu/api-reference/endpoints/connections/update-connection',
+  clients:           'https://docs.chift.eu/api-reference/endpoints/accounting/clients/get-list-of-accounting-clients',
+  syncs:             'https://docs.chift.eu/api-reference/endpoints/syncs/create-sync-url',
+};
+
 /** Extract a count from various API response shapes. */
 export function extractCount(data) {
   if (Array.isArray(data))               return data.length;

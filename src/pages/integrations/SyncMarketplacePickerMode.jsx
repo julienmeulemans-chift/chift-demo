@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, DOC_URLS } from '../../lib/chiftApi.js';
+import { useApiLog } from '../../hooks/useApiLog.js';
+import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
 export default function SyncMarketplacePickerMode() {
-  const { config }              = useChiftConfig();
-  const [techOpen, setTechOpen] = useState(false);
+  const { config }                                          = useChiftConfig();
+  const [techOpen, setTechOpen]                             = useState(false);
+  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog();
 
   const [integrations, setIntegrations] = useState([]);
   const [intLoading,   setIntLoading]   = useState(false);
@@ -19,17 +22,23 @@ export default function SyncMarketplacePickerMode() {
   const loadIntegrations = async () => {
     setIntLoading(true);
     setIntError(null);
+    clearLog();
     try {
       const token = await getToken(config);
+      logCall({ id: 'integrations_load', method: 'GET',
+        endpoint: '/integrations?status=active',
+        docUrl:   DOC_URLS.integrations });
       const res = await fetch(
         `${config.baseUrl}/integrations?status=active`,
         { headers: buildHeaders(token, config.accountId) }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status} — ${await res.text()}`);
       const data = await res.json();
+      resolveCall('integrations_load', data);
       const list = Array.isArray(data) ? data : (data.results ?? data.items ?? []);
-      setIntegrations(list.filter((i) => i.api === 'Accounting'));
+      setIntegrations(list);
     } catch (err) {
+      failCall('integrations_load', err.message);
       setIntError(`Could not load integrations: ${err.message}`);
     } finally {
       setIntLoading(false);
@@ -66,7 +75,7 @@ export default function SyncMarketplacePickerMode() {
           </div>
           {isConfigured && (
             <button className="btn btn-outline-secondary btn-sm" onClick={loadIntegrations} disabled={intLoading}>
-              <i className={`bi bi-arrow-clockwise me-1`} />Reload
+              <i className="bi bi-arrow-clockwise me-1" />Reload
             </button>
           )}
         </div>
@@ -81,7 +90,7 @@ export default function SyncMarketplacePickerMode() {
         {intError && <div className="alert alert-danger small">{intError}</div>}
 
         {!intLoading && !intError && integrations.length === 0 && isConfigured && (
-          <div className="text-muted small py-3">No active Accounting connectors found.</div>
+          <div className="text-muted small py-3">No active connectors found.</div>
         )}
 
         <div className="row g-3 mt-1">
@@ -124,9 +133,11 @@ export default function SyncMarketplacePickerMode() {
         >
           <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
           <div className="small flex-grow-1">
-            <strong>Sync — Marketplace + Connector Picker</strong><br />
-            User picks a connector, then is redirected to the Chift Marketplace with that connector pre-selected.
-            User must create a Chift account to proceed.
+            <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <strong>Marketplace — Connector Picker</strong>
+              <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>⭐⭐ Low effort</span>
+            </div>
+            Shows active connectors. User picks one, then is redirected to the Marketplace with that connector pre-selected. User must create a Chift account.
           </div>
           <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
         </div>
@@ -138,12 +149,12 @@ export default function SyncMarketplacePickerMode() {
         {techOpen && (
           <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
             <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
-              Technical details
+              Technical flow
             </div>
             <div className="d-flex flex-column gap-2 small text-muted mb-3">
               <div>
                 <span className="badge bg-primary bg-opacity-10 text-primary me-2" style={{ minWidth: 24 }}>1</span>
-                Fetch connectors — <code>GET /integrations?status=active</code>, filter <code>api === "Accounting"</code>
+                Fetch connectors — <code>GET /integrations?status=active</code>
               </div>
               <div>
                 <span className="badge bg-primary bg-opacity-10 text-primary me-2" style={{ minWidth: 24 }}>2</span>
@@ -151,12 +162,13 @@ export default function SyncMarketplacePickerMode() {
               </div>
               <div>
                 <span className="badge bg-primary bg-opacity-10 text-primary me-2" style={{ minWidth: 24 }}>3</span>
-                Open <code>https://marketplaces.chift.app/en/{'{slug}'}/apps/{'{integration_id}'}</code> in a new tab
+                Open <code>{`https://marketplaces.chift.app/en/{slug}/apps/{integration_id}`}</code> in a new tab
               </div>
             </div>
             <p className="text-muted small fst-italic mb-0">
               No callback or consumer ID is sent back to this app — connection status is only visible in the Chift back-office.
             </p>
+            <ApiCallLog calls={calls} onClear={clearLog} />
           </div>
         )}
       </div>

@@ -2,50 +2,6 @@ import { useState } from 'react';
 import { useChiftConfig } from '../contexts/ChiftConfigContext.jsx';
 import { invalidateToken } from '../lib/chiftApi.js';
 
-const DEMO_MODES = [
-  {
-    value: 'unified-api-generic',
-    label: 'Unified API — Generic',
-    badge: 'Method 1a',
-    description: 'Single "Connect" button — user picks their accounting software on the Chift-hosted flow. Uses apis: ["Accounting"].',
-  },
-  {
-    value: 'unified-api-picker',
-    label: 'Unified API — Connector Picker',
-    badge: 'Method 1b',
-    description: 'Shows one card per active Accounting connector (GET /integrations). User clicks a specific one; uses integrationid in the connection.',
-  },
-  {
-    value: 'sync-marketplace',
-    label: 'Marketplace — Generic',
-    badge: '⭐ Minimal effort',
-    description: 'Redirect to a Chift-hosted Marketplace. User must create a Chift account.',
-  },
-  {
-    value: 'sync-marketplace-picker',
-    label: 'Marketplace — Connector Picker',
-    badge: '⭐⭐ Low effort',
-    description: 'Shows active Accounting connectors. User picks one, then is redirected to the Marketplace with that connector pre-selected (/apps/{integration_id}).',
-  },
-  {
-    value: 'sync-api',
-    label: 'Sync — API-driven',
-    badge: '⭐⭐ Low effort',
-    description: 'Creates a sync instance via API and redirects the user to a Chift-hosted sync page.',
-  },
-  {
-    value: 'sync-api-picker',
-    label: 'Sync — API-driven + Connector Picker',
-    badge: '⭐⭐⭐ Medium effort',
-    description: 'Shows active Accounting connectors for the user to pick. Passes the selected integrationid when creating the sync URL — connector selection on Chift\'s side is skipped.',
-  },
-  {
-    value: 'sync-embedded',
-    label: 'Sync — Fully Embedded',
-    badge: '⭐⭐⭐⭐ High effort',
-    description: 'Entire sync flow embedded in your app via iframe. No Chift UI visible.',
-  },
-];
 
 function Field({ label, hint, children }) {
   return (
@@ -112,44 +68,6 @@ export default function Settings() {
                 onChange={(e) => set('appName', e.target.value)}
               />
             </Field>
-          </div>
-        </div>
-
-        {/* ── Demo Mode ──────────────────────────────────── */}
-        <div className="card border-0 shadow-sm mb-4">
-          <div className="card-header bg-white border-bottom py-3 px-4">
-            <h6 className="mb-0 fw-semibold">Demo Mode</h6>
-          </div>
-          <div className="card-body px-4 pt-3 pb-2">
-            {DEMO_MODES.map((mode) => {
-              const active = form.demoMode === mode.value;
-              return (
-                <div
-                  key={mode.value}
-                  className={`d-flex align-items-start gap-3 p-3 rounded mb-2 ${
-                    active ? 'bg-primary bg-opacity-10 border border-primary' : 'bg-light border border-transparent'
-                  }`}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => set('demoMode', mode.value)}
-                >
-                  <input
-                    type="radio"
-                    className="form-check-input mt-1 flex-shrink-0"
-                    checked={active}
-                    onChange={() => set('demoMode', mode.value)}
-                  />
-                  <div>
-                    <div className="d-flex align-items-center gap-2 flex-wrap">
-                      <span className="fw-medium">{mode.label}</span>
-                      <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>
-                        {mode.badge}
-                      </span>
-                    </div>
-                    <div className="text-muted small mt-1">{mode.description}</div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
 

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, extractCount } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, extractCount, DOC_URLS } from '../../lib/chiftApi.js';
+import { useApiLog } from '../../hooks/useApiLog.js';
+import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
 function StepBadge({ n }) {
   return (
@@ -12,9 +14,10 @@ function StepBadge({ n }) {
 }
 
 export default function SyncApiDrivenMode() {
-  const { config, setConfig } = useChiftConfig();
-  const [searchParams]        = useSearchParams();
-  const navigate              = useNavigate();
+  const { config, setConfig }                               = useChiftConfig();
+  const [searchParams]                                      = useSearchParams();
+  const navigate                                            = useNavigate();
+  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog();
 
   const [status,      setStatus]      = useState('idle');
   const [clientCount, setClientCount] = useState(null);
@@ -38,18 +41,26 @@ export default function SyncApiDrivenMode() {
   const fetchClients = async (consumerId) => {
     setStatus('loading');
     setError(null);
+    clearLog();
     try {
       const token = await getToken(config);
+      const hdrs  = buildHeaders(token, config.accountId);
+
+      logCall({ id: 'clients_load', method: 'GET',
+        endpoint: `/consumers/${consumerId}/accounting/clients`,
+        docUrl:   DOC_URLS.clients });
       const res = await fetch(
         `${config.baseUrl}/consumers/${consumerId}/accounting/clients`,
-        { headers: buildHeaders(token, config.accountId) }
+        { headers: hdrs }
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        failCall('clients_load', `HTTP ${res.status} — ${body.error_code ?? JSON.stringify(body)}`);
         if (body.error_code === 'ERROR_NO_ACTIVE_CONNECTION') { setStatus('idle'); return; }
         throw new Error(`HTTP ${res.status} — ${JSON.stringify(body)}`);
       }
       const data = await res.json();
+      resolveCall('clients_load', data);
       setClientCount(extractCount(data));
       setStatus('success');
     } catch (err) {
@@ -65,49 +76,62 @@ export default function SyncApiDrivenMode() {
     }
     setStatus('loading');
     setError(null);
+    clearLog();
 
     try {
       const token = await getToken(config);
       const hdrs  = buildHeaders(token, config.accountId);
       let consumerId = config.consumerId;
 
-      // Step 1 — Create consumer if needed
+      // Create consumer if needed
       if (!consumerId) {
+        const consumerBody = {
+          name:               config.consumerName || 'Demo Consumer',
+          redirect_url:       `${window.location.origin}/integrations?chift_return=1`,
+          internal_reference: `demo_${Date.now()}`,
+        };
+        logCall({ id: 'consumer_create', method: 'POST',
+          endpoint: '/consumers',
+          docUrl:   DOC_URLS.consumers_post,
+          requestBody: consumerBody });
         const r = await fetch(`${config.baseUrl}/consumers`, {
-          method: 'POST',
-          headers: hdrs,
-          body: JSON.stringify({
-            name:               config.consumerName || 'Demo Consumer',
-            redirect_url:       `${window.location.origin}/integrations?chift_return=1`,
-            internal_reference: `demo_${Date.now()}`,
-          }),
+          method: 'POST', headers: hdrs, body: JSON.stringify(consumerBody),
         });
-        if (!r.ok) throw new Error(`Consumer creation failed (${r.status}): ${await r.text()}`);
+        if (!r.ok) {
+          failCall('consumer_create', `HTTP ${r.status}: ${await r.text()}`);
+          throw new Error(`Consumer creation failed (${r.status})`);
+        }
         const consumer = await r.json();
+        resolveCall('consumer_create', consumer);
         consumerId = consumer.consumerid ?? consumer.id ?? consumer.consumer_id;
         if (!consumerId) throw new Error('API returned no consumer ID.');
         setConfig({ consumerId });
       }
 
-      // Step 2 — Get sync redirect URL
+      // Get sync redirect URL
       const integrationids = config.integrationIds
         ? config.integrationIds.split(',').map((s) => s.trim()).filter(Boolean)
         : [];
-
+      const syncBody = {
+        syncid:         config.syncId,
+        ...(integrationids.length ? { integrationids } : {}),
+      };
+      logCall({ id: 'sync_create', method: 'POST',
+        endpoint: `/consumers/${consumerId}/syncs`,
+        docUrl:   DOC_URLS.syncs,
+        requestBody: syncBody });
       const r = await fetch(`${config.baseUrl}/consumers/${consumerId}/syncs`, {
-        method: 'POST',
-        headers: hdrs,
-        body: JSON.stringify({
-          syncid:         config.syncId,
-          integrationids: integrationids.length ? integrationids : undefined,
-        }),
+        method: 'POST', headers: hdrs, body: JSON.stringify(syncBody),
       });
-      if (!r.ok) throw new Error(`Sync URL retrieval failed (${r.status}): ${await r.text()}`);
-      const { url } = await r.json();
-      if (!url) throw new Error('No redirect URL returned by the API.');
+      if (!r.ok) {
+        failCall('sync_create', `HTTP ${r.status}: ${await r.text()}`);
+        throw new Error(`Sync URL retrieval failed (${r.status})`);
+      }
+      const syncRes = await r.json();
+      resolveCall('sync_create', syncRes);
+      if (!syncRes.url) throw new Error('No redirect URL returned by the API.');
 
-      // Step 3 — Redirect user to Chift-hosted sync page
-      window.location.href = url;
+      window.location.href = syncRes.url;
     } catch (err) {
       setError(err.message);
       setStatus('idle');
@@ -119,6 +143,7 @@ export default function SyncApiDrivenMode() {
     setStatus('idle');
     setClientCount(null);
     setError(null);
+    clearLog();
   };
 
   return (
@@ -221,23 +246,24 @@ export default function SyncApiDrivenMode() {
         >
           <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
           <div className="small flex-grow-1">
-            <strong>Sync — API-driven</strong><br />
-            Your app retrieves the sync URL programmatically and redirects the user to the
-            Chift-hosted sync page. No Chift account creation required.
+            <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <strong>Sync — API-driven</strong>
+              <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>⭐⭐ Low effort</span>
+            </div>
+            Creates a sync instance via API and redirects the user to a Chift-hosted sync page.
           </div>
           <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
         </div>
         {techOpen && (
           <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
             <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
-              Technical details
+              Technical flow
             </div>
             <div className="d-flex flex-column gap-2 small text-muted">
-              <div><StepBadge n={1} />Authenticate — <code>POST /token</code></div>
-              <div><StepBadge n={2} />Create consumer — <code>POST /consumers</code></div>
-              <div><StepBadge n={3} />Get sync URL — <code>POST /consumers/{'{id}'}/syncs</code> with <code>syncid</code></div>
-              <div><StepBadge n={4} />Redirect end-user to Chift-hosted sync page</div>
-              <div><StepBadge n={5} />Return here — <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
+              <div><StepBadge n={1} />Create consumer if none exists for the current end-user — <code>POST /consumers</code></div>
+              <div><StepBadge n={2} />Get sync URL — <code>POST /consumers/{'{id}'}/syncs</code> with <code>syncid</code></div>
+              <div><StepBadge n={3} />Redirect end-user to Chift-hosted sync page</div>
+              <div><StepBadge n={4} />Return here — <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
             </div>
             {config.consumerId && (
               <div className="alert alert-info small mb-0 mt-3 py-2">
@@ -245,6 +271,7 @@ export default function SyncApiDrivenMode() {
                 Existing consumer: <code>{config.consumerId}</code> — Steps 1–2 will be skipped.
               </div>
             )}
+            <ApiCallLog calls={calls} onClear={clearLog} />
           </div>
         )}
       </div>

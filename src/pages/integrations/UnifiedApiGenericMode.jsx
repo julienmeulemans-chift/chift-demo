@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, extractCount } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, extractCount, DOC_URLS } from '../../lib/chiftApi.js';
+import { useApiLog } from '../../hooks/useApiLog.js';
+import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
 function StepBadge({ n }) {
   return (
@@ -12,9 +14,10 @@ function StepBadge({ n }) {
 }
 
 export default function UnifiedApiGenericMode() {
-  const { config, setConfig } = useChiftConfig();
-  const [searchParams]        = useSearchParams();
-  const navigate              = useNavigate();
+  const { config, setConfig }                         = useChiftConfig();
+  const [searchParams]                                = useSearchParams();
+  const navigate                                      = useNavigate();
+  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog();
 
   const [status,      setStatus]      = useState('idle'); // idle | loading | success
   const [clientCount, setClientCount] = useState(null);
@@ -25,12 +28,11 @@ export default function UnifiedApiGenericMode() {
 
   const isConfigured = !!(config.clientId && config.clientSecret);
 
-  // ── OAuth2 return ─────────────────────────────────────────────────
+  // ── OAuth2 return / auto-load ─────────────────────────────────────
   useEffect(() => {
     const isReturn      = searchParams.get('chift_return') === '1';
     const urlConsumerId = searchParams.get('consumer_id');
     if (!isReturn) {
-      // Auto-load if consumer already connected
       if (config.consumerId && isConfigured) fetchAllData(config.consumerId);
       return;
     }
@@ -40,54 +42,65 @@ export default function UnifiedApiGenericMode() {
     fetchAllData(consumerId);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Fetch connection info (non-throwing, best-effort) ─────────────
-  const fetchConnectionInfo = async (consumerId, token) => {
-    try {
-      const res = await fetch(
-        `${config.baseUrl}/consumers/${consumerId}/connections`,
-        { headers: buildHeaders(token, config.accountId) }
-      );
-      if (!res.ok) return;
-      const list = await res.json();
-      const conn = list.find((c) => c.api === 'Accounting') ?? null;
-      if (!conn) return;
-      setConnection(conn);
-      // Fetch logo
-      try {
-        const logoRes = await fetch(
-          `${config.baseUrl}/integrations/${conn.integrationid}/logo.json`,
-          { headers: buildHeaders(token, config.accountId) }
-        );
-        if (logoRes.ok) {
-          const logoData = await logoRes.json();
-          setLogoSrc(`data:image/png;base64,${logoData.data}`);
-        }
-      } catch { /* logo is optional */ }
-    } catch { /* silent */ }
-  };
-
-  // ── Fetch everything needed for the success state ─────────────────
+  // ── Fetch everything needed for the success / active state ────────
   const fetchAllData = async (consumerId) => {
     setStatus('loading');
     setError(null);
+    clearLog();
     try {
       const token = await getToken(config);
-      const [, clientsRes] = await Promise.all([
-        fetchConnectionInfo(consumerId, token),
-        fetch(
-          `${config.baseUrl}/consumers/${consumerId}/accounting/clients`,
-          { headers: buildHeaders(token, config.accountId) }
-        ),
-      ]);
+      const hdrs  = buildHeaders(token, config.accountId);
+
+      // 1. GET connections
+      logCall({ id: 'conn_load', method: 'GET',
+        endpoint: `/consumers/${consumerId}/connections`,
+        docUrl:   DOC_URLS.connections_get });
+      const connRes  = await fetch(`${config.baseUrl}/consumers/${consumerId}/connections`, { headers: hdrs });
+      let conn = null;
+      if (connRes.ok) {
+        const connList = await connRes.json().catch(() => []);
+        resolveCall('conn_load', connList);
+        conn = Array.isArray(connList) ? connList[0] ?? null : null;
+        if (conn) {
+          setConnection(conn);
+          // Fetch logo silently
+          try {
+            const logoRes = await fetch(
+              `${config.baseUrl}/integrations/${conn.integrationid}/logo.json`,
+              { headers: hdrs }
+            );
+            if (logoRes.ok) {
+              const logoData = await logoRes.json();
+              setLogoSrc(`data:image/png;base64,${logoData.data}`);
+            }
+          } catch { /* logo is optional */ }
+        }
+      } else {
+        failCall('conn_load', `HTTP ${connRes.status}`);
+      }
+
+      // No connection — stay on idle screen, skip clients call
+      if (!conn) { setStatus('idle'); return; }
+
+      // 2. GET accounting clients (only when connection exists)
+      logCall({ id: 'clients_load', method: 'GET',
+        endpoint: `/consumers/${consumerId}/accounting/clients`,
+        docUrl:   DOC_URLS.clients });
+      const clientsRes = await fetch(
+        `${config.baseUrl}/consumers/${consumerId}/accounting/clients`,
+        { headers: hdrs }
+      );
       if (!clientsRes.ok) {
         const body = await clientsRes.json().catch(() => ({}));
+        failCall('clients_load', `HTTP ${clientsRes.status} — ${body.error_code ?? JSON.stringify(body)}`);
         if (body.error_code === 'ERROR_NO_ACTIVE_CONNECTION') {
-          setStatus('idle'); // no connection yet — silent, stay on connect screen
+          setStatus('success'); // connection exists but not yet active — show card
           return;
         }
         throw new Error(`HTTP ${clientsRes.status} — ${JSON.stringify(body)}`);
       }
       const data = await clientsRes.json();
+      resolveCall('clients_load', data);
       setClientCount(extractCount(data));
       setStatus('success');
     } catch (err) {
@@ -96,49 +109,85 @@ export default function UnifiedApiGenericMode() {
     }
   };
 
-  // ── Connect handler ───────────────────────────────────────────────
+  // ── Connect handler (PATCH if connection exists, POST otherwise) ───
   const handleConnect = async () => {
-    if (!config.clientId || !config.clientSecret) {
-      setError('Please set Client ID and Client Secret in Settings.');
-      return;
-    }
+    if (!isConfigured) { setError('Please set Client ID and Client Secret in Settings.'); return; }
     setStatus('loading');
     setError(null);
+    clearLog();
     try {
       const token = await getToken(config);
       const hdrs  = buildHeaders(token, config.accountId);
       let consumerId = config.consumerId;
 
+      // Create consumer if needed
       if (!consumerId) {
+        const consumerBody = {
+          name:               config.consumerName || 'Demo Consumer',
+          redirect_url:       `${window.location.origin}/integrations?chift_return=1`,
+          internal_reference: `demo_${Date.now()}`,
+        };
+        logCall({ id: 'consumer_create', method: 'POST',
+          endpoint: '/consumers',
+          docUrl:   DOC_URLS.consumers_post,
+          requestBody: consumerBody });
         const r = await fetch(`${config.baseUrl}/consumers`, {
-          method: 'POST',
-          headers: hdrs,
-          body: JSON.stringify({
-            name:               config.consumerName || 'Demo Consumer',
-            redirect_url:       `${window.location.origin}/integrations?chift_return=1`,
-            internal_reference: `demo_${Date.now()}`,
-          }),
+          method: 'POST', headers: hdrs, body: JSON.stringify(consumerBody),
         });
-        if (!r.ok) throw new Error(`Consumer creation failed (${r.status}): ${await r.text()}`);
+        if (!r.ok) {
+          failCall('consumer_create', `HTTP ${r.status}: ${await r.text()}`);
+          throw new Error(`Consumer creation failed (${r.status})`);
+        }
         const consumer = await r.json();
+        resolveCall('consumer_create', consumer);
         consumerId = consumer.consumerid ?? consumer.id ?? consumer.consumer_id;
         if (!consumerId) throw new Error('API returned no consumer ID.');
         setConfig({ consumerId });
       }
 
-      const r = await fetch(`${config.baseUrl}/consumers/${consumerId}/connections`, {
-        method: 'POST',
-        headers: hdrs,
-        body: JSON.stringify({
-          apis:         ['Accounting'],
-          redirect:     true,
-          redirect_url: `${window.location.origin}/integrations?chift_return=1&consumer_id=${consumerId}`,
-        }),
-      });
-      if (!r.ok) throw new Error(`Connection creation failed (${r.status}): ${await r.text()}`);
-      const conn = await r.json();
-      if (!conn.url) throw new Error('No redirect URL returned by the API.');
-      window.location.href = conn.url;
+      // Reuse connection loaded on mount; new consumers have no connections
+      const existingConn = config.consumerId ? connection : null;
+
+      const redirectUrl = `${window.location.origin}/integrations?chift_return=1&consumer_id=${consumerId}`;
+
+      if (existingConn?.connectionid) {
+        // PATCH existing connection
+        const patchBody = { redirect: true, redirect_url: redirectUrl };
+        logCall({ id: 'conn_patch', method: 'PATCH',
+          endpoint: `/consumers/${consumerId}/connections/${existingConn.connectionid}`,
+          docUrl:   DOC_URLS.connections_patch,
+          requestBody: patchBody });
+        const r = await fetch(
+          `${config.baseUrl}/consumers/${consumerId}/connections/${existingConn.connectionid}`,
+          { method: 'PATCH', headers: hdrs, body: JSON.stringify(patchBody) }
+        );
+        if (!r.ok) {
+          failCall('conn_patch', `HTTP ${r.status}: ${await r.text()}`);
+          throw new Error(`Connection update failed (${r.status})`);
+        }
+        const conn = await r.json();
+        resolveCall('conn_patch', conn);
+        if (!conn.url) throw new Error('No redirect URL returned by the API.');
+        window.location.href = conn.url;
+      } else {
+        // POST new connection
+        const postBody = { apis: ['Accounting'], redirect: true, redirect_url: redirectUrl };
+        logCall({ id: 'conn_post', method: 'POST',
+          endpoint: `/consumers/${consumerId}/connections`,
+          docUrl:   DOC_URLS.connections_post,
+          requestBody: postBody });
+        const r = await fetch(`${config.baseUrl}/consumers/${consumerId}/connections`, {
+          method: 'POST', headers: hdrs, body: JSON.stringify(postBody),
+        });
+        if (!r.ok) {
+          failCall('conn_post', `HTTP ${r.status}: ${await r.text()}`);
+          throw new Error(`Connection creation failed (${r.status})`);
+        }
+        const conn = await r.json();
+        resolveCall('conn_post', conn);
+        if (!conn.url) throw new Error('No redirect URL returned by the API.');
+        window.location.href = conn.url;
+      }
     } catch (err) {
       setError(err.message);
       setStatus('idle');
@@ -152,6 +201,7 @@ export default function UnifiedApiGenericMode() {
     setConnection(null);
     setLogoSrc(null);
     setError(null);
+    clearLog();
   };
 
   return (
@@ -220,8 +270,8 @@ export default function UnifiedApiGenericMode() {
                   <h6 className="mb-0 fw-semibold">{connection?.name ?? 'Connected'}</h6>
                   <div className="text-muted small">{connection?.integration ?? 'Accounting connector'}</div>
                 </div>
-                <span className={`badge fw-medium px-3 py-2 flex-shrink-0 ${connection?.status === 'active' ? 'bg-success bg-opacity-10 text-success' : 'bg-secondary bg-opacity-10 text-secondary'}`}>
-                  <i className={`bi ${connection?.status === 'active' ? 'bi-check-circle-fill' : 'bi-circle'} me-1`} />
+                <span className={`badge fw-medium px-3 py-2 flex-shrink-0 ${connection?.status === 'active' ? 'bg-success bg-opacity-10 text-success' : 'bg-warning bg-opacity-10 text-warning'}`}>
+                  <i className={`bi ${connection?.status === 'active' ? 'bi-check-circle-fill' : 'bi-hourglass-split'} me-1`} />
                   {connection?.status ?? 'active'}
                 </span>
               </div>
@@ -237,7 +287,9 @@ export default function UnifiedApiGenericMode() {
                     {clientCount !== null ? (
                       <div className="fw-bold fs-3 lh-1 mt-1">{clientCount.toLocaleString()}</div>
                     ) : (
-                      <div className="text-muted small mt-1">Could not fetch</div>
+                      <div className="text-muted small mt-1">
+                        {connection?.status !== 'active' ? 'Awaiting activation' : 'Could not fetch'}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -246,6 +298,9 @@ export default function UnifiedApiGenericMode() {
               <div className="d-flex gap-2 flex-wrap">
                 <button className="btn btn-outline-primary btn-sm" onClick={() => fetchAllData(config.consumerId)}>
                   <i className="bi bi-arrow-clockwise me-1" />Refresh
+                </button>
+                <button className="btn btn-outline-primary btn-sm" onClick={handleConnect}>
+                  <i className="bi bi-pencil me-1" />Reconnect
                 </button>
                 <button className="btn btn-outline-secondary btn-sm" onClick={handleDisconnect}>
                   Disconnect
@@ -265,24 +320,25 @@ export default function UnifiedApiGenericMode() {
         >
           <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
           <div className="small flex-grow-1">
-            <strong>Unified API — Generic</strong><br />
-            A single "Connect" button sends the user to Chift where they choose their accounting
-            software from all available connectors. Your app only specifies the{' '}
-            <code>apis: ["Accounting"]</code> filter.
+            <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <strong>Unified API — Generic</strong>
+              <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>Minimal effort</span>
+            </div>
+            Single "Connect" button — user picks their accounting software on the Chift-hosted flow.
           </div>
           <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />
         </div>
         {techOpen && (
           <div className="border-top px-4 py-3" style={{ background: 'rgba(0,0,0,0.02)' }}>
             <div className="small fw-medium text-muted mb-2" style={{ letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
-              Technical details
+              Technical flow
             </div>
             <div className="d-flex flex-column gap-2 small text-muted">
-              <div><StepBadge n={1} />Authenticate — <code>POST /token</code></div>
-              <div><StepBadge n={2} />Create consumer — <code>POST /consumers</code></div>
-              <div><StepBadge n={3} />Create connection — <code>POST /consumers/{'{id}'}/connections</code> with <code>apis: ["Accounting"]</code></div>
+              <div><StepBadge n={1} />Create consumer if none exists for the current end-user — <code>POST /consumers</code></div>
+              <div><StepBadge n={2} />Check existing connections — <code>GET /consumers/{'{id}'}/connections</code></div>
+              <div><StepBadge n={3} />Create or update connection — <code>POST</code> or <code>PATCH /consumers/{'{id}'}/connections</code></div>
               <div><StepBadge n={4} />Redirect end-user → picks accounting software on Chift</div>
-              <div><StepBadge n={5} />Return here — <code>GET /consumers/{'{id}'}/connections</code> + <code>GET /consumers/{'{id}'}/accounting/clients</code></div>
+              <div><StepBadge n={5} />Return here — reload connections + clients</div>
             </div>
             {config.consumerId && (
               <div className="alert alert-info small mb-0 mt-3 py-2">
@@ -290,6 +346,7 @@ export default function UnifiedApiGenericMode() {
                 Existing consumer: <code>{config.consumerId}</code> — Steps 1–2 will be skipped.
               </div>
             )}
+            <ApiCallLog calls={calls} onClear={clearLog} />
           </div>
         )}
       </div>

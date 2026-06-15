@@ -9,8 +9,9 @@ export default function SyncMarketplaceMode() {
     ? `https://marketplaces.chift.app/en/${config.marketplaceSlug}`
     : null;
 
-  const title = 'Sync — Marketplace';
-  const description = 'The user is redirected to the Chift-hosted Marketplace and must create a Chift account to proceed.';
+  const title = 'Marketplace — Generic';
+  const badge = '⭐ Minimal effort';
+  const description = 'Redirect to a Chift-hosted Marketplace. User must create a Chift account.';
 
   return (
     <div style={{ maxWidth: 680 }}>
@@ -53,7 +54,10 @@ export default function SyncMarketplaceMode() {
         >
           <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
           <div className="small flex-grow-1">
-            <strong>{title}</strong><br />
+            <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <strong>{title}</strong>
+              <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>{badge}</span>
+            </div>
             {description}
           </div>
           <i className={`bi bi-chevron-${techOpen ? 'up' : 'down'} text-muted flex-shrink-0 mt-1`} style={{ fontSize: 13 }} />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
 import { getToken, buildHeaders, extractCount, DOC_URLS } from '../../lib/chiftApi.js';
@@ -17,7 +17,7 @@ export default function SyncApiDrivenMode() {
   const { config, setConfig }                               = useChiftConfig();
   const [searchParams]                                      = useSearchParams();
   const navigate                                            = useNavigate();
-  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog();
+  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog('api-log-sync-driven');
 
   const [status,      setStatus]      = useState('idle');
   const [clientCount, setClientCount] = useState(null);
@@ -25,13 +25,18 @@ export default function SyncApiDrivenMode() {
   const [techOpen,    setTechOpen]    = useState(false);
 
   const isConfigured = !!(config.clientId && config.clientSecret && config.syncId);
+  const didInit      = useRef(false);
 
-  // ── OAuth2 return ─────────────────────────────────────────────────
+  // ── OAuth2 return / auto-load ─────────────────────────────────────
   useEffect(() => {
+    if (didInit.current) return; // prevent React StrictMode double-invoke
+    didInit.current = true;
     const isReturn      = searchParams.get('chift_return') === '1';
     const urlConsumerId = searchParams.get('consumer_id');
-    if (!isReturn) return;
-
+    if (!isReturn) {
+      if (config.consumerId && isConfigured) fetchClients(config.consumerId);
+      return;
+    }
     const consumerId = urlConsumerId || config.consumerId;
     if (urlConsumerId && urlConsumerId !== config.consumerId) setConfig({ consumerId: urlConsumerId });
     navigate('/integrations', { replace: true });
@@ -41,7 +46,6 @@ export default function SyncApiDrivenMode() {
   const fetchClients = async (consumerId) => {
     setStatus('loading');
     setError(null);
-    clearLog();
     try {
       const token = await getToken(config);
       const hdrs  = buildHeaders(token, config.accountId);
@@ -76,7 +80,6 @@ export default function SyncApiDrivenMode() {
     }
     setStatus('loading');
     setError(null);
-    clearLog();
 
     try {
       const token = await getToken(config);
@@ -109,12 +112,8 @@ export default function SyncApiDrivenMode() {
       }
 
       // Get sync redirect URL
-      const integrationids = config.integrationIds
-        ? config.integrationIds.split(',').map((s) => s.trim()).filter(Boolean)
-        : [];
       const syncBody = {
-        syncid:         config.syncId,
-        ...(integrationids.length ? { integrationids } : {}),
+        syncid: config.syncId,
       };
       logCall({ id: 'sync_create', method: 'POST',
         endpoint: `/consumers/${consumerId}/syncs`,
@@ -143,7 +142,6 @@ export default function SyncApiDrivenMode() {
     setStatus('idle');
     setClientCount(null);
     setError(null);
-    clearLog();
   };
 
   return (
@@ -268,7 +266,7 @@ export default function SyncApiDrivenMode() {
             {config.consumerId && (
               <div className="alert alert-info small mb-0 mt-3 py-2">
                 <i className="bi bi-person-badge me-1" />
-                Existing consumer: <code>{config.consumerId}</code> — Steps 1–2 will be skipped.
+                Existing consumer: <code>{config.consumerId}</code> — Step 1 (consumer creation) will be skipped.
               </div>
             )}
             <ApiCallLog calls={calls} onClear={clearLog} />

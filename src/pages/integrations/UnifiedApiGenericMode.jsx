@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
 import { getToken, buildHeaders, extractCount, DOC_URLS } from '../../lib/chiftApi.js';
@@ -17,7 +17,7 @@ export default function UnifiedApiGenericMode() {
   const { config, setConfig }                         = useChiftConfig();
   const [searchParams]                                = useSearchParams();
   const navigate                                      = useNavigate();
-  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog();
+  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog('api-log-unified-generic');
 
   const [status,      setStatus]      = useState('idle'); // idle | loading | success
   const [clientCount, setClientCount] = useState(null);
@@ -27,9 +27,12 @@ export default function UnifiedApiGenericMode() {
   const [techOpen,    setTechOpen]    = useState(false);
 
   const isConfigured = !!(config.clientId && config.clientSecret);
+  const didInit      = useRef(false);
 
   // ── OAuth2 return / auto-load ─────────────────────────────────────
   useEffect(() => {
+    if (didInit.current) return; // prevent React StrictMode double-invoke
+    didInit.current = true;
     const isReturn      = searchParams.get('chift_return') === '1';
     const urlConsumerId = searchParams.get('consumer_id');
     if (!isReturn) {
@@ -46,7 +49,6 @@ export default function UnifiedApiGenericMode() {
   const fetchAllData = async (consumerId) => {
     setStatus('loading');
     setError(null);
-    clearLog();
     try {
       const token = await getToken(config);
       const hdrs  = buildHeaders(token, config.accountId);
@@ -114,7 +116,6 @@ export default function UnifiedApiGenericMode() {
     if (!isConfigured) { setError('Please set Client ID and Client Secret in Settings.'); return; }
     setStatus('loading');
     setError(null);
-    clearLog();
     try {
       const token = await getToken(config);
       const hdrs  = buildHeaders(token, config.accountId);
@@ -201,7 +202,6 @@ export default function UnifiedApiGenericMode() {
     setConnection(null);
     setLogoSrc(null);
     setError(null);
-    clearLog();
   };
 
   return (
@@ -335,15 +335,14 @@ export default function UnifiedApiGenericMode() {
             </div>
             <div className="d-flex flex-column gap-2 small text-muted">
               <div><StepBadge n={1} />Create consumer if none exists for the current end-user — <code>POST /consumers</code></div>
-              <div><StepBadge n={2} />Check existing connections — <code>GET /consumers/{'{id}'}/connections</code></div>
-              <div><StepBadge n={3} />Create or update connection — <code>POST</code> or <code>PATCH /consumers/{'{id}'}/connections</code></div>
-              <div><StepBadge n={4} />Redirect end-user → picks accounting software on Chift</div>
-              <div><StepBadge n={5} />Return here — reload connections + clients</div>
+              <div><StepBadge n={2} />Create or update connection — <code>POST</code> or <code>PATCH /consumers/{'{id}'}/connections</code></div>
+              <div><StepBadge n={3} />Redirect end-user → picks accounting software on Chift</div>
+              <div><StepBadge n={4} />Return here — reload connections + clients</div>
             </div>
             {config.consumerId && (
               <div className="alert alert-info small mb-0 mt-3 py-2">
                 <i className="bi bi-person-badge me-1" />
-                Existing consumer: <code>{config.consumerId}</code> — Steps 1–2 will be skipped.
+                Existing consumer: <code>{config.consumerId}</code> — Step 1 will be skipped.
               </div>
             )}
             <ApiCallLog calls={calls} onClear={clearLog} />

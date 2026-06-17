@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const METHOD_STYLE = {
   GET:    { background: '#e8f4ff', color: '#1a5fa8' },
@@ -88,7 +88,11 @@ function CallRow({ call }) {
 }
 
 export function ApiCallLog({ calls, onClear }) {
-  if (!calls || calls.length === 0) return null;
+  // Show the box once at least one call has ever been logged (survives clearing)
+  const everHadCalls = useRef(false);
+  useEffect(() => { if (calls && calls.length > 0) everHadCalls.current = true; }, [calls]);
+
+  if (!calls || (!everHadCalls.current && calls.length === 0)) return null;
 
   return (
     <div className="border rounded-3 mt-4 overflow-hidden">
@@ -105,7 +109,11 @@ export function ApiCallLog({ calls, onClear }) {
           </button>
         )}
       </div>
-      {calls.map(call => <CallRow key={call.id} call={call} />)}
+      {calls.length === 0 ? (
+        <div className="px-3 py-3 text-muted" style={{ fontSize: 12 }}>No calls yet.</div>
+      ) : (
+        calls.map(call => <CallRow key={call.id} call={call} />)
+      )}
     </div>
   );
 }

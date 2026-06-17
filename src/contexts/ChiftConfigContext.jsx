@@ -11,15 +11,12 @@ const DEFAULT_CONFIG = {
   clientSecret: '',
   baseUrl:      'https://api.chift.eu',
   // ── Unified API ──
-  integrationId: '',
-  consumerName:  'Demo Consumer',
-  consumerId:    '',
+  consumerName: 'Demo Consumer',
+  consumerId:   '',
   // ── Sync — Marketplace ──
-  marketplaceSlug:   '',
-  syncIntegrationId: '',
+  marketplaceSlug: '',
   // ── Sync — API-driven ──
-  syncId:         '',
-  integrationIds: '',
+  syncId: '',
   // ── Sync — Embedded (uses accountId above + syncId + envId) ──
   envId: '',
 };

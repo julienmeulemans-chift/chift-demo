@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
 import { getToken, buildHeaders, DOC_URLS } from '../../lib/chiftApi.js';
 import { useApiLog } from '../../hooks/useApiLog.js';
@@ -13,16 +13,18 @@ export default function SyncMarketplacePickerMode() {
   const [intLoading,   setIntLoading]   = useState(false);
   const [intError,     setIntError]     = useState(null);
 
-  const isConfigured = !!(config.clientId && config.clientSecret && config.marketplaceSlug);
+  const isConfigured  = !!(config.clientId && config.clientSecret && config.marketplaceSlug);
+  const loadingRef    = useRef(false);
 
   useEffect(() => {
     if (isConfigured) loadIntegrations();
-  }, [config.clientId, config.clientSecret, config.accountId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [config.clientId, config.clientSecret, config.accountId, config.marketplaceSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadIntegrations = async () => {
+    if (loadingRef.current) return; // prevent StrictMode double-invoke
+    loadingRef.current = true;
     setIntLoading(true);
     setIntError(null);
-    clearLog();
     try {
       const token = await getToken(config);
       logCall({ id: 'integrations_load', method: 'GET',
@@ -36,12 +38,13 @@ export default function SyncMarketplacePickerMode() {
       const data = await res.json();
       resolveCall('integrations_load', data);
       const list = Array.isArray(data) ? data : (data.results ?? data.items ?? []);
-      setIntegrations(list);
+      setIntegrations(list.filter(i => i.api === 'Accounting'));
     } catch (err) {
       failCall('integrations_load', err.message);
       setIntError(`Could not load integrations: ${err.message}`);
     } finally {
       setIntLoading(false);
+      loadingRef.current = false;
     }
   };
 

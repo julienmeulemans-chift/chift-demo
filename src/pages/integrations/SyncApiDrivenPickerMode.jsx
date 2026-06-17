@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
 import { getToken, buildHeaders, extractCount, DOC_URLS } from '../../lib/chiftApi.js';
@@ -17,7 +17,7 @@ export default function SyncApiDrivenPickerMode() {
   const { config, setConfig }                               = useChiftConfig();
   const [searchParams]                                      = useSearchParams();
   const navigate                                            = useNavigate();
-  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog();
+  const { calls, logCall, resolveCall, failCall, clearLog } = useApiLog('api-log-sync-driven-picker');
 
   const [integrations, setIntegrations] = useState([]);
   const [intLoading,   setIntLoading]   = useState(false);
@@ -32,9 +32,13 @@ export default function SyncApiDrivenPickerMode() {
   const [techOpen,    setTechOpen]    = useState(false);
 
   const isConfigured = !!(config.clientId && config.clientSecret && config.syncId);
+  const didInit      = useRef(false);
+  const loadingRef   = useRef(false);
 
   // ── OAuth2 return / auto-load ─────────────────────────────────────
   useEffect(() => {
+    if (didInit.current) return; // prevent React StrictMode double-invoke
+    didInit.current = true;
     const isReturn      = searchParams.get('chift_return') === '1';
     const urlConsumerId = searchParams.get('consumer_id');
     if (!isReturn) {
@@ -53,9 +57,10 @@ export default function SyncApiDrivenPickerMode() {
   }, [config.clientId, config.clientSecret, config.accountId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadIntegrations = async () => {
+    if (loadingRef.current) return; // prevent StrictMode double-invoke
+    loadingRef.current = true;
     setIntLoading(true);
     setIntError(null);
-    clearLog();
     try {
       const token = await getToken(config);
       logCall({ id: 'integrations_load', method: 'GET',
@@ -69,24 +74,29 @@ export default function SyncApiDrivenPickerMode() {
       const data = await res.json();
       resolveCall('integrations_load', data);
       const list = Array.isArray(data) ? data : (data.results ?? data.items ?? []);
-      setIntegrations(list);
+      setIntegrations(list.filter(i => i.api === 'Accounting'));
     } catch (err) {
       failCall('integrations_load', err.message);
       setIntError(`Could not load integrations: ${err.message}`);
     } finally {
       setIntLoading(false);
+      loadingRef.current = false;
     }
   };
 
   // ── Fetch connection info for logo/display (best-effort, returns conn) ──
   const fetchConnectionInfo = async (consumerId, token) => {
     try {
+      logCall({ id: 'conn_load', method: 'GET',
+        endpoint: `/consumers/${consumerId}/connections`,
+        docUrl:   DOC_URLS.connections_get });
       const res = await fetch(
         `${config.baseUrl}/consumers/${consumerId}/connections`,
         { headers: buildHeaders(token, config.accountId) }
       );
-      if (!res.ok) return null;
+      if (!res.ok) { failCall('conn_load', `HTTP ${res.status}`); return null; }
       const list = await res.json();
+      resolveCall('conn_load', list);
       const conn = Array.isArray(list) ? list[0] ?? null : null;
       if (!conn) return null;
       setConnection(conn);
@@ -107,7 +117,6 @@ export default function SyncApiDrivenPickerMode() {
   const fetchAllData = async (consumerId) => {
     setStatus('loading');
     setError(null);
-    clearLog();
     try {
       const token = await getToken(config);
       const hdrs  = buildHeaders(token, config.accountId);
@@ -150,7 +159,6 @@ export default function SyncApiDrivenPickerMode() {
     if (!isConfigured) { setError('Please set Client ID, Client Secret and Sync ID in Settings.'); return; }
     setConnecting(integration.integrationid);
     setError(null);
-    clearLog();
     try {
       const token = await getToken(config);
       const hdrs  = buildHeaders(token, config.accountId);
@@ -216,7 +224,6 @@ export default function SyncApiDrivenPickerMode() {
     setLogoSrc(null);
     setError(null);
     setConnecting(null);
-    clearLog();
   };
 
   // ── SUCCESS state ─────────────────────────────────────────────────

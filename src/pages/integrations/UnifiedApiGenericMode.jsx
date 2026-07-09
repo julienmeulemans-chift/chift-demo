@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, extractCount, DOC_URLS } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, extractCount, DOC_URLS, deleteConnection } from '../../lib/chiftApi.js';
 import { useApiLog } from '../../hooks/useApiLog.js';
 import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
@@ -195,13 +195,25 @@ export default function UnifiedApiGenericMode() {
     }
   };
 
-  const handleDisconnect = () => {
-    setConfig({ consumerId: '' });
+  const handleDisconnect = async () => {
+    const consumerId = config.consumerId;
+    const connectionId = connection?.connectionid;
+    // Clear local connection state only (do not remove stored consumerId)
     setStatus('idle');
     setClientCount(null);
     setConnection(null);
     setLogoSrc(null);
     setError(null);
+    if (consumerId && connectionId) {
+      logCall({ id: 'conn_delete', method: 'DELETE', endpoint: `/consumers/${consumerId}/connections/${connectionId}`, docUrl: DOC_URLS.connections_get });
+      try {
+        await deleteConnection(config, consumerId, connectionId);
+        resolveCall('conn_delete', null);
+      } catch (err) {
+        console.error(err);
+        failCall('conn_delete', err.message);
+      }
+    }
   };
 
   return (

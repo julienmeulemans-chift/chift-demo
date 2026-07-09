@@ -75,3 +75,28 @@ export function extractCount(data) {
   if (Array.isArray(data?.items))        return data.items.length;
   return null;
 }
+
+/**
+ * Delete a connection for a consumer. Silently ignores errors.
+ * @param {object} config
+ * @param {string} consumerId
+ * @param {string} connectionId
+ */
+export async function deleteConnection(config, consumerId, connectionId) {
+  try {
+    const token = await getToken(config);
+    const hdrs = buildHeaders(token, config.accountId);
+    const res = await fetch(`${config.baseUrl}/consumers/${consumerId}/connections/${connectionId}`, {
+      method: 'DELETE',
+      headers: hdrs,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => String(res.status));
+      throw new Error(`Connection deletion failed (${res.status}): ${text}`);
+    }
+    return res;
+  } catch (err) {
+    console.error('deleteConnection error:', err);
+    throw err;
+  }
+}

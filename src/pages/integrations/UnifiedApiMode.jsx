@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, deleteConnection, DOC_URLS } from '../../lib/chiftApi.js';
+import { useApiLog } from '../../hooks/useApiLog.js';
 
 // ── helpers ──────────────────────────────────────────────────────────
 function extractCount(data) {
@@ -128,11 +129,40 @@ export default function UnifiedApiMode() {
     }
   };
 
-  const handleDisconnect = () => {
-    setConfig({ consumerId: '' });
+  const { logCall, resolveCall, failCall } = useApiLog('api-log-unified-mode');
+
+  const handleDisconnect = async () => {
+    const consumerId = config.consumerId;
+    // Clear local connection state only (do not remove stored consumerId)
     setStatus('idle');
     setCustomerCount(null);
     setError(null);
+
+    // If we have a consumerId, try to delete any existing connection (best-effort, log to ApiLog and console)
+    if (consumerId) {
+      try {
+        const token = await getToken(config);
+        const hdrs  = buildHeaders(token, config.accountId);
+        const res = await fetch(`${config.baseUrl}/consumers/${consumerId}/connections`, { headers: hdrs });
+        if (res.ok) {
+          const list = await res.json().catch(() => []);
+          const conn = Array.isArray(list) ? list[0] ?? null : null;
+          if (conn?.connectionid) {
+            const connectionId = conn.connectionid;
+            logCall({ id: 'conn_delete', method: 'DELETE', endpoint: `/consumers/${consumerId}/connections/${connectionId}`, docUrl: DOC_URLS.connections_get });
+            try {
+              await deleteConnection(config, consumerId, connectionId);
+              resolveCall('conn_delete', null);
+            } catch (err) {
+              console.error(err);
+              failCall('conn_delete', err.message);
+            }
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
   };
 
   const isConfigured = !!(config.clientId && config.clientSecret && config.integrationId);

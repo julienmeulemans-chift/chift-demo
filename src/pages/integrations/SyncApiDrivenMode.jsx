@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, extractCount, DOC_URLS } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, extractCount, DOC_URLS, deleteConnection } from '../../lib/chiftApi.js';
 import { useApiLog } from '../../hooks/useApiLog.js';
 import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
@@ -137,11 +137,37 @@ export default function SyncApiDrivenMode() {
     }
   };
 
-  const handleReset = () => {
-    setConfig({ consumerId: '' });
+  const handleReset = async () => {
+    const consumerId = config.consumerId;
+    // Clear only local connection state; keep stored consumerId
     setStatus('idle');
     setClientCount(null);
     setError(null);
+
+    if (!consumerId) return;
+
+    try {
+      const token = await getToken(config);
+      const hdrs  = buildHeaders(token, config.accountId);
+      const res = await fetch(`${config.baseUrl}/consumers/${consumerId}/connections`, { headers: hdrs });
+      if (!res.ok) { failCall('conn_list', `HTTP ${res.status}`); return; }
+      const list = await res.json().catch(() => []);
+      const conns = Array.isArray(list) ? list : [];
+      for (const conn of conns) {
+        if (!conn?.connectionid) continue;
+        const id = conn.connectionid;
+        logCall({ id: `conn_delete_${id}`, method: 'DELETE', endpoint: `/consumers/${consumerId}/connections/${id}`, docUrl: DOC_URLS.connections_get });
+        try {
+          await deleteConnection(config, consumerId, id);
+          resolveCall(`conn_delete_${id}`, null);
+        } catch (err) {
+          console.error(err);
+          failCall(`conn_delete_${id}`, err.message);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (

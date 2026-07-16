@@ -10,7 +10,7 @@ import Settings from './pages/Settings.jsx';
 export default function App() {
   return (
     <ChiftConfigProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/chift-demo">
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />

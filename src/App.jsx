@@ -8,9 +8,11 @@ import Integrations from './pages/integrations/index.jsx';
 import Settings from './pages/Settings.jsx';
 
 export default function App() {
+  const basename = import.meta.env.VITE_BASE_URL || '/';
+
   return (
     <ChiftConfigProvider>
-      <BrowserRouter basename="/chift-demo">
+      <BrowserRouter basename={basename}>
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />

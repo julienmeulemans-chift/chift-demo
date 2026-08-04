@@ -322,7 +322,7 @@ export default function SyncApiDrivenPickerMode() {
             <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
             <div className="small flex-grow-1">
               <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                <strong>Sync — API-driven + Connector Picker</strong>
+                <strong>Sync — Connector Picker</strong>
                 <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>⭐⭐⭐ Medium effort</span>
               </div>
               Shows active connectors for the user to pick. Passes the selected <code>integrationid</code> when creating the sync URL — connector selection on Chift's side is skipped.
@@ -455,7 +455,7 @@ export default function SyncApiDrivenPickerMode() {
           <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
           <div className="small flex-grow-1">
             <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-              <strong>Sync — API-driven + Connector Picker</strong>
+              <strong>Sync — Connector Picker</strong>
               <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>⭐⭐⭐ Medium effort</span>
             </div>
             Shows active connectors for the user to pick. Passes the selected <code>integrationid</code> when creating the sync URL — connector selection on Chift's side is skipped.

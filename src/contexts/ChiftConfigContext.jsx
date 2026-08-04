@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   consumerId:   '',
   // ── Sync — Marketplace ──
   marketplaceSlug: '',
-  // ── Sync — API-driven ──
+  // ── Sync — Generic / Connector Picker ──
   syncId: '',
   // ── Sync — Embedded (uses accountId above + syncId + envId) ──
   envId: '',

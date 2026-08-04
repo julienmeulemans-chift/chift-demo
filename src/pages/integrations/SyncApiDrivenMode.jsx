@@ -271,7 +271,7 @@ export default function SyncApiDrivenMode() {
           <i className="bi bi-info-circle-fill text-primary mt-1 flex-shrink-0" />
           <div className="small flex-grow-1">
             <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-              <strong>Sync — API-driven</strong>
+              <strong>Sync — Generic</strong>
               <span className="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style={{ fontSize: 11 }}>⭐⭐ Low effort</span>
             </div>
             Creates a sync instance via API and redirects the user to a Chift-hosted sync page.

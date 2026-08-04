@@ -13,8 +13,8 @@ const DEMO_MODES = [
   { value: 'unified-api-picker',      label: 'Unified API — Connector Picker' },
   { value: 'sync-marketplace',        label: 'Marketplace — Generic' },
   { value: 'sync-marketplace-picker', label: 'Marketplace — Connector Picker' },
-  { value: 'sync-api',                label: 'Sync — API-driven' },
-  { value: 'sync-api-picker',         label: 'Sync — API-driven + Connector Picker' },
+  { value: 'sync-api',                label: 'Sync — Generic' },
+  { value: 'sync-api-picker',         label: 'Sync — Connector Picker' },
   { value: 'sync-embedded',           label: 'Sync — Fully Embedded' },
 ];
 

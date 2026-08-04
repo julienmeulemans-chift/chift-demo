@@ -64,6 +64,7 @@ export const DOC_URLS = {
   connections_patch: 'https://docs.chift.eu/api-reference/endpoints/connections/update-connection',
   clients:           'https://docs.chift.eu/api-reference/endpoints/accounting/clients/get-list-of-accounting-clients',
   syncs:             'https://docs.chift.eu/api-reference/endpoints/syncs/create-sync-url',
+  syncs_get:         'https://docs.chift.eu/api-reference/endpoints/syncs/get-syncs',
 };
 
 /** Extract a count from various API response shapes. */

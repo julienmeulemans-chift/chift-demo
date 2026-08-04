@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useChiftConfig } from '../contexts/ChiftConfigContext.jsx';
-import { invalidateToken } from '../lib/chiftApi.js';
+import { getToken, buildHeaders, invalidateToken } from '../lib/chiftApi.js';
 
 
 function Field({ label, hint, children }) {
@@ -38,6 +38,42 @@ export default function Settings() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+
+  // ── Sync list (GET /syncs) ────────────────────────────────────────
+  const [syncs,       setSyncs]       = useState([]);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncError,   setSyncError]   = useState(null);
+  const syncLoadingRef                = useRef(false);
+
+  const hasCreds = !!(form.clientId && form.clientSecret && form.accountId);
+
+  const loadSyncs = async () => {
+    if (syncLoadingRef.current || !hasCreds) return;
+    syncLoadingRef.current = true;
+    setSyncLoading(true);
+    setSyncError(null);
+    try {
+      const token = await getToken(form);
+      const res   = await fetch(`${form.baseUrl}/syncs`, {
+        headers: buildHeaders(token, form.accountId),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setSyncs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setSyncError(err.message);
+      setSyncs([]);
+    } finally {
+      setSyncLoading(false);
+      syncLoadingRef.current = false;
+    }
+  };
+
+  // Load syncs when credentials are present / change
+  useEffect(() => {
+    if (hasCreds) loadSyncs();
+    else setSyncs([]);
+  }, [config.clientId, config.clientSecret, config.accountId, config.baseUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   return (
@@ -176,15 +212,53 @@ export default function Settings() {
               <h6 className="mb-0 fw-semibold">Sync</h6>
             </div>
             <div className="card-body px-4 pt-3 pb-1">
-              <Field label="Sync ID" hint="UUID of the sync — used as syncid in POST /consumers/{id}/syncs.">
-                <input
-                  type="text"
-                  className="form-control font-monospace"
-                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                  value={form.syncId}
-                  onChange={(e) => set('syncId', e.target.value)}
-                  onBlur={(e) => saveField('syncId', e.target.value)}
-                />
+              <Field
+                label="Sync"
+                hint={
+                  !hasCreds
+                    ? 'Fill in the Chift API credentials to load the available syncs.'
+                    : syncError
+                      ? <span className="text-danger">Could not load syncs: {syncError}</span>
+                      : <>Used as <code>syncid</code> in <code>POST /consumers/{'{id}'}/syncs</code>.</>
+                }
+              >
+                <div className="input-group">
+                  <select
+                    className="form-select"
+                    value={form.syncId}
+                    disabled={!hasCreds || syncLoading}
+                    onChange={(e) => saveField('syncId', e.target.value)}
+                  >
+                    <option value="">
+                      {syncLoading
+                        ? 'Loading syncs…'
+                        : !hasCreds
+                          ? 'Credentials required'
+                          : syncs.length === 0
+                            ? 'No syncs found'
+                            : 'Select a sync…'}
+                    </option>
+                    {syncs.map((s) => (
+                      <option key={s.syncid} value={s.syncid}>{s.name}</option>
+                    ))}
+                    {/* Keep a previously saved sync selectable even if not in the list */}
+                    {form.syncId && !syncs.some((s) => s.syncid === form.syncId) && (
+                      <option value={form.syncId}>{form.syncId} (saved)</option>
+                    )}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={loadSyncs}
+                    disabled={!hasCreds || syncLoading}
+                    title="Reload syncs"
+                  >
+                    <i className="bi bi-arrow-clockwise" />
+                  </button>
+                </div>
+                {form.syncId && (
+                  <div className="form-text font-monospace" style={{ fontSize: 11 }}>{form.syncId}</div>
+                )}
               </Field>
             </div>
           </div>

@@ -90,7 +90,7 @@ export default function SyncApiDrivenMode() {
       if (!consumerId) {
         const consumerBody = {
           name:               config.consumerName || 'Demo Consumer',
-          redirect_url:       `${window.location.origin}/integrations?chift_return=1`,
+          redirect_url:       `${window.location.origin}${import.meta.env.BASE_URL}integrations?chift_return=1`,
           internal_reference: `demo_${Date.now()}`,
         };
         logCall({ id: 'consumer_create', method: 'POST',

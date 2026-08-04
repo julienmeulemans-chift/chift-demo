@@ -87,7 +87,7 @@ export default function UnifiedApiMode() {
 
       // Step 1 — Create consumer (if none yet)
       if (!consumerId) {
-        const redirectUrl = `${window.location.origin}/integrations?chift_return=1`;
+        const redirectUrl = `${window.location.origin}${import.meta.env.BASE_URL}integrations?chift_return=1`;
         const r = await fetch(`${config.baseUrl}/consumers`, {
           method: 'POST',
           headers: hdrs,
@@ -105,7 +105,7 @@ export default function UnifiedApiMode() {
       }
 
       // Step 2 — Create connection
-      const redirectUrl = `${window.location.origin}/integrations?chift_return=1&consumer_id=${consumerId}`;
+      const redirectUrl = `${window.location.origin}${import.meta.env.BASE_URL}integrations?chift_return=1&consumer_id=${consumerId}`;
       const r = await fetch(`${config.baseUrl}/consumers/${consumerId}/connections`, {
         method: 'POST',
         headers: hdrs,

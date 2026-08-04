@@ -125,7 +125,7 @@ export default function UnifiedApiGenericMode() {
       if (!consumerId) {
         const consumerBody = {
           name:               config.consumerName || 'Demo Consumer',
-          redirect_url:       `${window.location.origin}/integrations?chift_return=1`,
+          redirect_url:       `${window.location.origin}${import.meta.env.BASE_URL}integrations?chift_return=1`,
           internal_reference: `demo_${Date.now()}`,
         };
         logCall({ id: 'consumer_create', method: 'POST',
@@ -149,7 +149,7 @@ export default function UnifiedApiGenericMode() {
       // Reuse connection loaded on mount; new consumers have no connections
       const existingConn = config.consumerId ? connection : null;
 
-      const redirectUrl = `${window.location.origin}/integrations?chift_return=1&consumer_id=${consumerId}`;
+      const redirectUrl = `${window.location.origin}${import.meta.env.BASE_URL}integrations?chift_return=1&consumer_id=${consumerId}`;
 
       if (existingConn?.connectionid) {
         // PATCH existing connection

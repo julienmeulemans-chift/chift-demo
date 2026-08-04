@@ -8,7 +8,7 @@ import Integrations from './pages/integrations/index.jsx';
 import Settings from './pages/Settings.jsx';
 
 export default function App() {
-  const basename = import.meta.env.VITE_BASE_URL || '/';
+  const basename = import.meta.env.BASE_URL;
 
   return (
     <ChiftConfigProvider>

@@ -32,7 +32,7 @@ export default function SyncApiDrivenMode() {
     if (didInit.current) return; // prevent React StrictMode double-invoke
     didInit.current = true;
     const isReturn      = searchParams.get('chift_return') === '1';
-    const urlConsumerId = searchParams.get('consumer_id');
+    const urlConsumerId = searchParams.get('consumerId') ?? searchParams.get('consumer_id');
     if (!isReturn) {
       if (config.consumerId && isConfigured) fetchClients(config.consumerId);
       return;

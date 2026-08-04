@@ -35,7 +35,7 @@ export default function UnifiedApiMode() {
   // ── on mount: handle OAuth2 callback ──────────────────────────────
   useEffect(() => {
     const isReturn      = searchParams.get('chift_return') === '1';
-    const urlConsumerId = searchParams.get('consumer_id');
+    const urlConsumerId = searchParams.get('consumerId') ?? searchParams.get('consumer_id');
     if (!isReturn) return;
 
     const consumerId = urlConsumerId || config.consumerId;

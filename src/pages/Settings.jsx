@@ -358,31 +358,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* ── Embedded ─────────────────────────────────── */}
-        <div className="col-12 col-lg-6">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-header bg-white border-bottom py-3 px-4">
-              <h6 className="mb-0 fw-semibold">Embedded</h6>
-            </div>
-            <div className="card-body px-4 pt-3 pb-1">
-              <Field label="Environment ID">
-                <input
-                  type="text"
-                  className="form-control font-monospace"
-                  placeholder="Chift environment ID"
-                  value={form.envId}
-                  onChange={(e) => set('envId', e.target.value)}
-                  onBlur={(e) => saveField('envId', e.target.value)}
-                />
-              </Field>
-              <div className="alert alert-light border small py-2">
-                <i className="bi bi-info-circle me-1" />
-                Uses Account ID (credentials) + Sync ID (sync section) above.
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );

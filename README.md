@@ -4,7 +4,7 @@ A locally-run React SPA that simulates a generic SaaS platform ("AcmeCorp" by de
 
 ## Overview
 
-The app provides a realistic SaaS shell — top navbar, sidebar navigation (with a mobile off-canvas drawer), fake logged-in user, configurable platform name — with an **Integrations** page whose content changes based on the selected demo mode. A dropdown on the Integrations page lets you switch between modes live. Each mode also shows a collapsible "technical flow" panel with a live, expandable log of every Chift API call it makes (method, endpoint, request/response bodies, doc link). All configuration (API credentials, demo mode, consumer ID, etc.) is stored in `localStorage`; the per-mode API call log is stored in `sessionStorage` so it survives OAuth2/Chift redirects.
+The app provides a realistic SaaS shell — top navbar, sidebar navigation (with a mobile off-canvas drawer), fake logged-in user, configurable platform name and logo — with an **Integrations** page whose content changes based on the selected demo mode. A dropdown on the Integrations page lets you switch between modes live. Each mode also shows a collapsible "technical flow" panel with a live, expandable log of every Chift API call it makes (method, endpoint, request/response bodies). All configuration (API credentials, demo mode, consumer ID, etc.) is stored in `localStorage`; the per-mode API call log is stored in `sessionStorage` so it survives OAuth2/Chift redirects.
 
 ## Demo Modes
 
@@ -14,13 +14,12 @@ The app provides a realistic SaaS shell — top navbar, sidebar navigation (with
 | **Unified API — Connector Picker** | Low | Fetches active Accounting connectors via `GET /integrations?status=active` and displays them as cards. User picks a specific connector; calls `POST`/`PATCH /consumers/{id}/connections` with `integrationid`. |
 | **Marketplace — Generic** | Minimal | Redirects the user to the Chift-hosted Marketplace (`marketplaces.chift.app/en/{slug}`). User must create a Chift account. |
 | **Marketplace — Connector Picker** | Low | Fetches active Accounting connectors and deep-links straight to that connector's Marketplace app page (`.../apps/{integration_id}`). |
-| **Sync — API-driven** | Low | Creates a sync instance via `POST /consumers/{id}/syncs` (with `syncid`) and redirects the user to a Chift-hosted sync page. |
-| **Sync — API-driven + Connector Picker** | Medium | Same as above, plus a connector picker; passes `integrationids: [selectedId]` when requesting the sync URL. |
-| **Sync — Fully Embedded** | Highest | Renders the entire sync activation flow as an `<iframe>` directly in your app — no Chift branding visible to the end-user. Requires OpenID Connect on your OAuth2. |
+| **Sync — Generic** | Low | Creates a sync instance via `POST /consumers/{id}/syncs` (with `syncid`) and redirects the user to a Chift-hosted sync page. |
+| **Sync — Connector Picker** | Medium | Same as above, plus a connector picker; passes `integrationids: [selectedId]` when requesting the sync URL. |
 
 Every mode:
 - Auto-creates a consumer (`POST /consumers`, skipped once a Consumer ID is saved).
-- Detects the return from a Chift redirect (`?chift_return=1&consumer_id=...`) and reloads connection state.
+- Detects the return from a Chift redirect (`?chift_return=1&consumerId=...`) and reloads connection state.
 - Reuses an existing connection with `PATCH` instead of creating a new one with `POST` where applicable.
 - Fetches `GET /consumers/{id}/accounting/clients` to show a live client count once connected.
 - Lets you **Disconnect**, which deletes the connection (`DELETE /consumers/{id}/connections/{connectionId}`) and logs the outcome to the API call log and the browser console.
@@ -47,12 +46,11 @@ The app runs at `http://localhost:5173`.
 
 Open **Settings** in the sidebar and fill in:
 
-- **Platform name** — displayed in the navbar and page title (default: `AcmeCorp`)
+- **General** — Platform name (navbar + page title, default `AcmeCorp`) and an optional platform logo (PNG/JPG/SVG/WebP, max 200 KB, stored as a base64 data URL)
 - **Chift API Credentials** — Account ID, Client ID, Client Secret, and Base URL
 - **Consumer** — Consumer Name and Consumer ID (auto-populated after first connect; clearable)
-- **Sync** — Sync ID (used by the Sync — API-driven modes)
+- **Sync** — Sync picker, populated from `GET /syncs` once valid credentials are saved (used by the Sync modes)
 - **Marketplace** — Marketplace Slug (used by the Marketplace modes)
-- **Embedded** — Environment ID (used together with Account ID + Sync ID by Sync — Fully Embedded)
 
 The demo mode itself is switched from the dropdown on the **Integrations** page, not from Settings.
 
@@ -60,13 +58,13 @@ Fields save automatically on blur (a "Saved" indicator flashes next to the page 
 
 ## OAuth2 Redirect Flow
 
-For the API-driven modes (Unified API and Sync — API-driven), the app:
+For the API-driven modes (Unified API and Sync), the app:
 
 1. Calls `POST /token` (client credentials) to get a bearer token
 2. Creates a consumer via `POST /consumers` (skipped if Consumer ID is already saved)
 3. Creates or updates a connection/sync via the relevant endpoint
 4. Redirects the user to the Chift-hosted authorization page
-5. Detects the return via `?chift_return=1&consumer_id=...` in the URL
+5. Detects the return via `?chift_return=1&consumerId=...` in the URL
 6. Fetches `GET /consumers/{id}/connections` (connection name + logo) and `GET /consumers/{id}/accounting/clients` (client count)
 
 ## Tech Stack
@@ -101,6 +99,12 @@ src/
         ├── SyncMarketplaceMode.jsx
         ├── SyncMarketplacePickerMode.jsx
         ├── SyncApiDrivenMode.jsx
-        ├── SyncApiDrivenPickerMode.jsx
-        └── SyncEmbeddedMode.jsx
+        └── SyncApiDrivenPickerMode.jsx
 ```
+
+## Deployment
+
+The app is deployed to GitHub Pages at a sub-path (`/chift-demo/`), which requires two things:
+
+- `vite.config.js` sets `base: '/chift-demo/'`, and `App.jsx` passes `import.meta.env.BASE_URL` as the router `basename`. Redirect URLs sent to Chift are built from `BASE_URL` too, so they stay correct in both dev and production.
+- `public/404.html` implements the standard SPA fallback: GitHub Pages serves it for any unknown path, and it re-encodes the URL so `index.html` can restore the real route before React Router mounts.

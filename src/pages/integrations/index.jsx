@@ -6,7 +6,6 @@ import SyncMarketplaceMode         from './SyncMarketplaceMode.jsx';
 import SyncMarketplacePickerMode   from './SyncMarketplacePickerMode.jsx';
 import SyncApiDrivenMode           from './SyncApiDrivenMode.jsx';
 import SyncApiDrivenPickerMode     from './SyncApiDrivenPickerMode.jsx';
-import SyncEmbeddedMode            from './SyncEmbeddedMode.jsx';
 
 const DEMO_MODES = [
   { value: 'unified-api-generic',     label: 'Unified API — Generic' },
@@ -15,11 +14,15 @@ const DEMO_MODES = [
   { value: 'sync-marketplace-picker', label: 'Marketplace — Connector Picker' },
   { value: 'sync-api',                label: 'Sync — Generic' },
   { value: 'sync-api-picker',         label: 'Sync — Connector Picker' },
-  { value: 'sync-embedded',           label: 'Sync — Fully Embedded' },
 ];
 
 export default function Integrations() {
   const { config, setConfig } = useChiftConfig();
+
+  // Fall back to the first mode if a removed/unknown mode is stored in localStorage
+  const mode = DEMO_MODES.some(m => m.value === config.demoMode)
+    ? config.demoMode
+    : DEMO_MODES[0].value;
 
   return (
     <div>
@@ -31,7 +34,7 @@ export default function Integrations() {
         <select
           className="form-select form-select-sm"
           style={{ width: 'auto', minWidth: 240 }}
-          value={config.demoMode}
+          value={mode}
           onChange={e => setConfig({ demoMode: e.target.value })}
         >
           {DEMO_MODES.map(m => (
@@ -40,13 +43,12 @@ export default function Integrations() {
         </select>
       </div>
 
-      {config.demoMode === 'unified-api-generic'     && <UnifiedApiGenericMode />}
-      {config.demoMode === 'unified-api-picker'      && <UnifiedApiPickerMode />}
-      {config.demoMode === 'sync-marketplace'        && <SyncMarketplaceMode />}
-      {config.demoMode === 'sync-marketplace-picker' && <SyncMarketplacePickerMode />}
-      {config.demoMode === 'sync-api'                && <SyncApiDrivenMode />}
-      {config.demoMode === 'sync-api-picker'         && <SyncApiDrivenPickerMode />}
-      {config.demoMode === 'sync-embedded'           && <SyncEmbeddedMode />}
+      {mode === 'unified-api-generic'     && <UnifiedApiGenericMode />}
+      {mode === 'unified-api-picker'      && <UnifiedApiPickerMode />}
+      {mode === 'sync-marketplace'        && <SyncMarketplaceMode />}
+      {mode === 'sync-marketplace-picker' && <SyncMarketplacePickerMode />}
+      {mode === 'sync-api'                && <SyncApiDrivenMode />}
+      {mode === 'sync-api-picker'         && <SyncApiDrivenPickerMode />}
     </div>
   );
 }

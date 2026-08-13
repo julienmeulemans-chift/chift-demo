@@ -18,8 +18,6 @@ const DEFAULT_CONFIG = {
   marketplaceSlug: '',
   // ── Sync — Generic / Connector Picker ──
   syncId: '',
-  // ── Sync — Embedded (uses accountId above + syncId + envId) ──
-  envId: '',
 };
 
 const ChiftConfigContext = createContext(null);

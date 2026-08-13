@@ -5,6 +5,7 @@ const STORAGE_KEY = 'chift_demo_config';
 const DEFAULT_CONFIG = {
   demoMode: 'unified-api-generic',
   appName:  'AcmeCorp',
+  appLogo:  '',   // base64 data URL of a custom platform logo (empty = default icon)
   // ── Chift API credentials (all modes) ──
   accountId:    '',
   clientId:     '',

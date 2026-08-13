@@ -39,6 +39,39 @@ export default function Settings() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  // ── Platform logo upload ──────────────────────────────────────────
+  const MAX_LOGO_BYTES = 200 * 1024;
+  const [logoError, setLogoError] = useState(null);
+  const logoInputRef              = useRef(null);
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError(null);
+
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Please select an image file.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoError(`Image is ${Math.round(file.size / 1024)} KB — max is 200 KB.`);
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload  = () => saveField('appLogo', reader.result);
+    reader.onerror = () => setLogoError('Could not read the file.');
+    reader.readAsDataURL(file);
+  };
+
+  const clearLogo = () => {
+    setLogoError(null);
+    if (logoInputRef.current) logoInputRef.current.value = '';
+    saveField('appLogo', '');
+  };
+
   // ── Sync list (GET /syncs) ────────────────────────────────────────
   const [syncs,       setSyncs]       = useState([]);
   const [syncLoading, setSyncLoading] = useState(false);
@@ -106,6 +139,43 @@ export default function Settings() {
                   onChange={(e) => set('appName', e.target.value)}
                   onBlur={(e) => saveField('appName', e.target.value)}
                 />
+              </Field>
+
+              <Field
+                label="Platform logo"
+                hint={
+                  logoError
+                    ? <span className="text-danger">{logoError}</span>
+                    : 'PNG, JPG or SVG — max 200 KB. Replaces the default icon in the navbar.'
+                }
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    className="rounded d-flex align-items-center justify-content-center flex-shrink-0 border"
+                    style={{
+                      width: 44, height: 44, overflow: 'hidden',
+                      background: form.appLogo ? '#fff' : 'linear-gradient(135deg, #0d6efd 0%, #6610f2 100%)',
+                    }}
+                  >
+                    {form.appLogo
+                      ? <img src={form.appLogo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                      : <i className="bi bi-grid-fill text-white" style={{ fontSize: 18 }} />}
+                  </div>
+                  <div className="flex-grow-1">
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      className="form-control form-control-sm"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                      onChange={handleLogoUpload}
+                    />
+                  </div>
+                  {form.appLogo && (
+                    <button type="button" className="btn btn-outline-secondary btn-sm flex-shrink-0" onClick={clearLogo}>
+                      Remove
+                    </button>
+                  )}
+                </div>
               </Field>
             </div>
           </div>

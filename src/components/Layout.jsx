@@ -40,6 +40,7 @@ export default function Layout({ children }) {
   const location       = useLocation();
   const { config }     = useChiftConfig();
   const appName        = config.appName || 'AcmeCorp';
+  const appLogo        = config.appLogo || '';
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => { document.title = appName; }, [appName]);
@@ -79,9 +80,14 @@ export default function Layout({ children }) {
         >
           <div
             className="rounded d-flex align-items-center justify-content-center flex-shrink-0"
-            style={{ width: 30, height: 30, background: 'linear-gradient(135deg, #0d6efd 0%, #6610f2 100%)' }}
+            style={{
+              width: 30, height: 30, overflow: 'hidden',
+              background: appLogo ? 'transparent' : 'linear-gradient(135deg, #0d6efd 0%, #6610f2 100%)',
+            }}
           >
-            <i className="bi bi-grid-fill text-white" style={{ fontSize: 14 }} />
+            {appLogo
+              ? <img src={appLogo} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              : <i className="bi bi-grid-fill text-white" style={{ fontSize: 14 }} />}
           </div>
           {appName}
         </button>
@@ -137,9 +143,14 @@ export default function Layout({ children }) {
             <div className="d-flex align-items-center gap-2">
               <div
                 className="rounded d-flex align-items-center justify-content-center flex-shrink-0"
-                style={{ width: 28, height: 28, background: 'linear-gradient(135deg, #0d6efd 0%, #6610f2 100%)' }}
+                style={{
+                  width: 28, height: 28, overflow: 'hidden',
+                  background: appLogo ? 'transparent' : 'linear-gradient(135deg, #0d6efd 0%, #6610f2 100%)',
+                }}
               >
-                <i className="bi bi-grid-fill text-white" style={{ fontSize: 13 }} />
+                {appLogo
+                  ? <img src={appLogo} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  : <i className="bi bi-grid-fill text-white" style={{ fontSize: 13 }} />}
               </div>
               <span className="fw-bold text-primary" style={{ fontSize: 16 }}>{appName}</span>
             </div>

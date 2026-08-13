@@ -35,18 +35,10 @@ function CallRow({ call }) {
           {call.method}
         </span>
 
-        {/* Endpoint — clicking opens API docs, row click toggles body */}
-        <a
-          href={call.docUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-monospace flex-grow-1 text-body text-decoration-none"
-          style={{ fontSize: 12 }}
-          title="Open API reference"
-          onClick={e => e.stopPropagation()}
-        >
+        {/* Endpoint — row click toggles body */}
+        <span className="font-monospace flex-grow-1 text-body" style={{ fontSize: 12 }}>
           {call.endpoint}
-        </a>
+        </span>
 
         <i className={`bi bi-chevron-${open ? 'up' : 'down'} text-muted flex-shrink-0`} style={{ fontSize: 11 }} />
       </div>

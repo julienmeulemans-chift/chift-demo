@@ -187,11 +187,9 @@ export default function UnifiedApiPickerMode() {
       // Reuse connection loaded on mount; new consumers have no connections
       const existingConn = config.consumerId ? connection : null;
 
-      const redirectUrl = `${window.location.origin}${import.meta.env.BASE_URL}integrations?chift_return=1&consumer_id=${consumerId}`;
-
       if (existingConn?.connectionid) {
         // PATCH existing connection
-        const patchBody = { integrationid: integration.integrationid, redirect: true, redirect_url: redirectUrl };
+        const patchBody = { integrationid: integration.integrationid, redirect: true };
         logCall({ id: 'conn_patch', method: 'PATCH',
           endpoint: `/consumers/${consumerId}/connections/${existingConn.connectionid}`,
           docUrl:   DOC_URLS.connections_patch,
@@ -210,7 +208,7 @@ export default function UnifiedApiPickerMode() {
         window.location.href = conn.url;
       } else {
         // POST new connection
-        const postBody = { integrationid: integration.integrationid, redirect: true, redirect_url: redirectUrl };
+        const postBody = { integrationid: integration.integrationid, redirect: true };
         logCall({ id: 'conn_post', method: 'POST',
           endpoint: `/consumers/${consumerId}/connections`,
           docUrl:   DOC_URLS.connections_post,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, extractCount, DOC_URLS, deleteConnection } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, extractCount, DOC_URLS, deleteConnection, UNIFIED_API_CONTEXTS } from '../../lib/chiftApi.js';
 import { useApiLog } from '../../hooks/useApiLog.js';
 import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
@@ -28,6 +28,9 @@ export default function UnifiedApiGenericMode() {
 
   const isConfigured = !!(config.clientId && config.clientSecret);
   const didInit      = useRef(false);
+
+  const apiCtx = UNIFIED_API_CONTEXTS.find(c => c.value === config.unifiedApiContext)
+    ?? UNIFIED_API_CONTEXTS[0];
 
   // ── OAuth2 return / auto-load ─────────────────────────────────────
   useEffect(() => {
@@ -170,7 +173,7 @@ export default function UnifiedApiGenericMode() {
         window.location.href = conn.url;
       } else {
         // POST new connection
-        const postBody = { apis: ['Accounting'], redirect: true };
+        const postBody = { apis: [apiCtx.api], redirect: true };
         logCall({ id: 'conn_post', method: 'POST',
           endpoint: `/consumers/${consumerId}/connections`,
           docUrl:   DOC_URLS.connections_post,
@@ -244,12 +247,12 @@ export default function UnifiedApiGenericMode() {
                   <i className="bi bi-building text-primary" style={{ fontSize: 26 }} />
                 </div>
                 <div>
-                  <h6 className="mb-0 fw-semibold">Accounting Software</h6>
-                  <div className="text-muted small">Any accounting connector</div>
+                  <h6 className="mb-0 fw-semibold">{apiCtx.connectorLabel}</h6>
+                  <div className="text-muted small">Any {apiCtx.api} connector</div>
                 </div>
               </div>
               <button className="btn btn-primary btn-lg" onClick={handleConnect} disabled={!isConfigured}>
-                <i className="bi bi-plug-fill me-2" />Connect your accounting software
+                <i className="bi bi-plug-fill me-2" />Connect your {apiCtx.connectorLabel.toLowerCase()}
               </button>
             </>
           )}

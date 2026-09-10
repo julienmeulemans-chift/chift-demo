@@ -14,6 +14,8 @@ const DEFAULT_CONFIG = {
   // ── Unified API ──
   consumerName: 'Demo Consumer',
   consumerId:   '',
+  // ── Unified API ──
+  unifiedApiContext: 'accounting-from-ecommerce',
   // ── Sync — Marketplace ──
   marketplaceSlug: '',
   // ── Sync — Generic / Connector Picker ──

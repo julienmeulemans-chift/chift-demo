@@ -1,4 +1,5 @@
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
+import { UNIFIED_API_CONTEXTS } from '../../lib/chiftApi.js';
 
 import UnifiedApiGenericMode       from './UnifiedApiGenericMode.jsx';
 import UnifiedApiPickerMode        from './UnifiedApiPickerMode.jsx';
@@ -24,12 +25,19 @@ export default function Integrations() {
     ? config.demoMode
     : DEMO_MODES[0].value;
 
+  const isUnifiedApi = mode.startsWith('unified-api');
+  const apiCtx = UNIFIED_API_CONTEXTS.find(c => c.value === config.unifiedApiContext)
+    ?? UNIFIED_API_CONTEXTS[0];
+  const subtitle = isUnifiedApi
+    ? `Connect your ${apiCtx.connectorLabel.toLowerCase()} to ${config.appName || 'AcmeCorp'}.`
+    : `Connect your accounting software to ${config.appName || 'AcmeCorp'}.`;
+
   return (
     <div>
       <div className="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
         <div>
           <h4 className="fw-semibold mb-1">Integrations</h4>
-          <p className="text-muted mb-0">Connect your accounting software to {config.appName || 'AcmeCorp'}.</p>
+          <p className="text-muted mb-0">{subtitle}</p>
         </div>
         <select
           className="form-select form-select-sm"

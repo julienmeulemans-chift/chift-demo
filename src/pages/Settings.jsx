@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useChiftConfig } from '../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, invalidateToken } from '../lib/chiftApi.js';
+import { getToken, buildHeaders, invalidateToken, UNIFIED_API_CONTEXTS } from '../lib/chiftApi.js';
 
 
 function Field({ label, hint, children }) {
@@ -270,6 +270,31 @@ export default function Settings() {
                     </button>
                   )}
                 </div>
+              </Field>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Unified API ──────────────────────────────── */}
+        <div className="col-12 col-lg-6">
+          <div className="card border-0 shadow-sm h-100">
+            <div className="card-header bg-white border-bottom py-3 px-4">
+              <h6 className="mb-0 fw-semibold">Unified API</h6>
+            </div>
+            <div className="card-body px-4 pt-3 pb-1">
+              <Field
+                label="Use-case context"
+                hint="Determines which Chift API to connect and how the demo app is described."
+              >
+                <select
+                  className="form-select"
+                  value={form.unifiedApiContext}
+                  onChange={(e) => saveField('unifiedApiContext', e.target.value)}
+                >
+                  {UNIFIED_API_CONTEXTS.map((ctx) => (
+                    <option key={ctx.value} value={ctx.value}>{ctx.label}</option>
+                  ))}
+                </select>
               </Field>
             </div>
           </div>

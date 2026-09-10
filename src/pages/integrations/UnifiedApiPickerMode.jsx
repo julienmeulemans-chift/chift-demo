@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, extractCount, DOC_URLS, deleteConnection } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, extractCount, DOC_URLS, deleteConnection, UNIFIED_API_CONTEXTS } from '../../lib/chiftApi.js';
 import { useApiLog } from '../../hooks/useApiLog.js';
 import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
@@ -33,6 +33,9 @@ export default function UnifiedApiPickerMode() {
 
   const isConfigured = !!(config.clientId && config.clientSecret);
   const didInit      = useRef(false);
+
+  const apiCtx = UNIFIED_API_CONTEXTS.find(c => c.value === config.unifiedApiContext)
+    ?? UNIFIED_API_CONTEXTS[0];
   const loadingRef   = useRef(false);
 
   // ── OAuth2 return / auto-load ─────────────────────────────────────
@@ -74,7 +77,7 @@ export default function UnifiedApiPickerMode() {
       const data = await res.json();
       resolveCall('integrations_load', data);
       const list = Array.isArray(data) ? data : (data.results ?? data.items ?? []);
-      setIntegrations(list.filter(i => i.api === 'Accounting'));
+      setIntegrations(list.filter(i => i.api === apiCtx.api));
     } catch (err) {
       failCall('integrations_load', err.message);
       setIntError(`Could not load integrations: ${err.message}`);
@@ -398,7 +401,7 @@ export default function UnifiedApiPickerMode() {
       {/* Connector grid */}
       <div className="rounded-3 p-4 shadow-sm" style={{ background: 'rgba(13, 110, 253, 0.04)' }}>
         <div className="d-flex align-items-center justify-content-between mb-3">
-          <h6 className="mb-0 fw-semibold">Choose your accounting software</h6>
+          <h6 className="mb-0 fw-semibold">Choose your {apiCtx.connectorLabel.toLowerCase()}</h6>
           {isConfigured && (
             <button className="btn btn-outline-secondary btn-sm" onClick={loadIntegrations} disabled={intLoading}>
               <i className={`bi bi-arrow-clockwise me-1${intLoading ? ' spin' : ''}`} />Reload

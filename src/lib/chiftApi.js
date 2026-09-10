@@ -54,6 +54,38 @@ export function invalidateToken() {
   cache = { token: null, expiresAt: 0 };
 }
 
+/**
+ * Available Unified API use-case contexts.
+ * api    — value sent as apis:[api] in the connection POST/PATCH body
+ *          and used to filter GET /integrations results in picker mode.
+ * label  — shown in the Settings dropdown.
+ * connectorLabel — shown in the Integrations UI as the connector type.
+ * appLabel       — what the demo app represents (right-hand side).
+ */
+export const UNIFIED_API_CONTEXTS = [
+  {
+    value:          'accounting-from-ecommerce',
+    label:          'Accounting ← E-commerce',
+    api:            'Accounting',
+    connectorLabel: 'Accounting software',
+    appLabel:       'E-commerce platform',
+  },
+  {
+    value:          'accounting-from-accounting',
+    label:          'Accounting ← Accounting',
+    api:            'Accounting',
+    connectorLabel: 'Accounting software',
+    appLabel:       'Accounting software',
+  },
+  {
+    value:          'pos-from-generic',
+    label:          'POS ← Reporting / Analytics',
+    api:            'Point of Sale',
+    connectorLabel: 'POS system',
+    appLabel:       'Reporting / analytics tool',
+  },
+];
+
 /** API documentation URLs — used in ApiCallLog to make endpoints clickable. */
 export const DOC_URLS = {
   token:             'https://docs.chift.eu/developer-guides/create-api-key',

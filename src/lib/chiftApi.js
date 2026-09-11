@@ -65,21 +65,21 @@ export function invalidateToken() {
 export const UNIFIED_API_CONTEXTS = [
   {
     value:          'accounting-from-ecommerce',
-    label:          'Accounting ← E-commerce',
+    label:          'E-commerce → Accounting',
     api:            'Accounting',
     connectorLabel: 'Accounting software',
     appLabel:       'E-commerce platform',
   },
   {
     value:          'accounting-from-accounting',
-    label:          'Accounting ← Accounting',
+    label:          'Accounting → Accounting',
     api:            'Accounting',
     connectorLabel: 'Accounting software',
     appLabel:       'Accounting software',
   },
   {
     value:          'pos-from-generic',
-    label:          'POS ← Reporting / Analytics',
+    label:          'POS — Reporting / Analytics',
     api:            'Point of Sale',
     connectorLabel: 'POS system',
     appLabel:       'Reporting / analytics tool',

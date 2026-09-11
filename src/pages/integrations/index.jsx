@@ -29,8 +29,8 @@ export default function Integrations() {
   const apiCtx = UNIFIED_API_CONTEXTS.find(c => c.value === config.unifiedApiContext)
     ?? UNIFIED_API_CONTEXTS[0];
   const subtitle = isUnifiedApi
-    ? `Connect your ${apiCtx.connectorLabel.toLowerCase()} to ${config.appName || 'AcmeCorp'}.`
-    : `Connect your accounting software to ${config.appName || 'AcmeCorp'}.`;
+    ? `Connect your ${apiCtx.connectorLabel.toLowerCase()} to ${config.appName || 'AcmeCorp'}. (${apiCtx.label})`
+    : `Connect your accounting software to ${config.appName || 'AcmeCorp'}. (Accounting)`;
 
   return (
     <div>

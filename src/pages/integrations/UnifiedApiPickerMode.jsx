@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
 import { getToken, buildHeaders, DOC_URLS, deleteConnection, UNIFIED_API_CONTEXTS } from '../../lib/chiftApi.js';
 import { TestConnectionModal } from '../../components/TestConnectionModal.jsx';
+import { ConfigureMappingsModal } from '../../components/ConfigureMappingsModal.jsx';
 import { useApiLog } from '../../hooks/useApiLog.js';
 import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
@@ -30,7 +31,8 @@ export default function UnifiedApiPickerMode() {
   const [error,      setError]     = useState(null);
   const [connecting, setConnecting] = useState(null); // integrationid in progress
   const [techOpen,   setTechOpen]  = useState(false);
-  const [showTest,   setShowTest]  = useState(false);
+  const [showTest,     setShowTest]     = useState(false);
+  const [showMappings, setShowMappings] = useState(false);
 
   const isConfigured = !!(config.clientId && config.clientSecret);
   const didInit      = useRef(false);
@@ -291,6 +293,9 @@ export default function UnifiedApiPickerMode() {
                   <button className="btn btn-primary btn-sm" onClick={() => setShowTest(true)}>
                     <i className="bi bi-lightning-fill me-1" />Test connection
                   </button>
+                  <button className="btn btn-outline-primary btn-sm" onClick={() => setShowMappings(true)}>
+                    <i className="bi bi-sliders me-1" />Configure mappings
+                  </button>
                   <button className="btn btn-outline-secondary btn-sm" onClick={handleDisconnect}>
                     Disconnect
                   </button>
@@ -348,6 +353,15 @@ export default function UnifiedApiPickerMode() {
           config={config}
           apiType={apiCtx.api}
           onClose={() => setShowTest(false)}
+        />
+      )}
+      {showMappings && (
+        <ConfigureMappingsModal
+          consumerId={config.consumerId}
+          config={config}
+          apiCtx={apiCtx}
+          connectionId={connection?.connectionid}
+          onClose={() => setShowMappings(false)}
         />
       )}
       </div>

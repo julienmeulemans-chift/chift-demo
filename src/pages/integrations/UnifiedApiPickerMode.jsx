@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useChiftConfig } from '../../contexts/ChiftConfigContext.jsx';
-import { getToken, buildHeaders, extractCount, DOC_URLS, deleteConnection, UNIFIED_API_CONTEXTS } from '../../lib/chiftApi.js';
+import { getToken, buildHeaders, DOC_URLS, deleteConnection, UNIFIED_API_CONTEXTS } from '../../lib/chiftApi.js';
+import { TestConnectionModal } from '../../components/TestConnectionModal.jsx';
 import { useApiLog } from '../../hooks/useApiLog.js';
 import { ApiCallLog } from '../../components/ApiCallLog.jsx';
 
@@ -23,13 +24,13 @@ export default function UnifiedApiPickerMode() {
   const [intLoading,   setIntLoading]   = useState(false);
   const [intError,     setIntError]     = useState(null);
 
-  const [status,      setStatus]      = useState('idle'); // idle | loading | success
-  const [clientCount, setClientCount] = useState(null);
-  const [connection,  setConnection]  = useState(null);
-  const [logoSrc,     setLogoSrc]     = useState(null);
-  const [error,       setError]       = useState(null);
-  const [connecting,  setConnecting]  = useState(null); // integrationid in progress
-  const [techOpen,    setTechOpen]    = useState(false);
+  const [status,     setStatus]    = useState('idle'); // idle | loading | success
+  const [connection, setConnection] = useState(null);
+  const [logoSrc,    setLogoSrc]   = useState(null);
+  const [error,      setError]     = useState(null);
+  const [connecting, setConnecting] = useState(null); // integrationid in progress
+  const [techOpen,   setTechOpen]  = useState(false);
+  const [showTest,   setShowTest]  = useState(false);
 
   const isConfigured = !!(config.clientId && config.clientSecret);
   const didInit      = useRef(false);
@@ -104,7 +105,7 @@ export default function UnifiedApiPickerMode() {
       if (connRes.ok) {
         const connList = await connRes.json().catch(() => []);
         resolveCall('conn_load', connList);
-        conn = Array.isArray(connList) ? connList[0] ?? null : null;
+        conn = Array.isArray(connList) ? (connList.find(c => c.api === apiCtx.api) ?? null) : null;
         if (conn) {
           setConnection(conn);
           try {
@@ -122,30 +123,7 @@ export default function UnifiedApiPickerMode() {
         failCall('conn_load', `HTTP ${connRes.status}`);
       }
 
-      // No connection — stay on picker screen, skip clients call
-      if (!conn) { setStatus('idle'); return; }
-
-      // 2. GET accounting clients (only when connection exists)
-      logCall({ id: 'clients_load', method: 'GET',
-        endpoint: `/consumers/${consumerId}/accounting/clients`,
-        docUrl:   DOC_URLS.clients });
-      const clientsRes = await fetch(
-        `${config.baseUrl}/consumers/${consumerId}/accounting/clients`,
-        { headers: hdrs }
-      );
-      if (!clientsRes.ok) {
-        const body = await clientsRes.json().catch(() => ({}));
-        failCall('clients_load', `HTTP ${clientsRes.status} — ${body.error_code ?? JSON.stringify(body)}`);
-        if (body.error_code === 'ERROR_NO_ACTIVE_CONNECTION') {
-          setStatus('success'); // connection exists but not yet active — show card
-          return;
-        }
-        throw new Error(`HTTP ${clientsRes.status} — ${JSON.stringify(body)}`);
-      }
-      const data = await clientsRes.json();
-      resolveCall('clients_load', data);
-      setClientCount(extractCount(data));
-      setStatus('success');
+      setStatus(conn ? 'success' : 'idle');
     } catch (err) {
       setError(`Could not load data: ${err.message}`);
       setStatus('idle');
@@ -211,7 +189,7 @@ export default function UnifiedApiPickerMode() {
         window.location.href = conn.url;
       } else {
         // POST new connection
-        const postBody = { integrationid: integration.integrationid, redirect: true };
+        const postBody = { name: config.consumerName || 'Demo Consumer', integrationid: integration.integrationid, redirect: true };
         logCall({ id: 'conn_post', method: 'POST',
           endpoint: `/consumers/${consumerId}/connections`,
           docUrl:   DOC_URLS.connections_post,
@@ -239,7 +217,6 @@ export default function UnifiedApiPickerMode() {
     const connectionId = connection?.connectionid;
     // Clear local connection state only (do not remove stored consumerId)
     setStatus('idle');
-    setClientCount(null);
     setConnection(null);
     setLogoSrc(null);
     setError(null);
@@ -258,7 +235,7 @@ export default function UnifiedApiPickerMode() {
   };
 
   // ── SUCCESS state ─────────────────────────────────────────────────
-  if (status === 'success' || (status === 'loading' && clientCount !== null)) {
+  if (status === 'success') {
     return (
       <div style={{ maxWidth: 680 }}>
         {error && (
@@ -293,7 +270,7 @@ export default function UnifiedApiPickerMode() {
                   </div>
                   <div className="flex-grow-1">
                     <h6 className="mb-0 fw-semibold">{connection?.name ?? 'Connected'}</h6>
-                    <div className="text-muted small">{connection?.integration ?? 'Accounting connector'}</div>
+                    <div className="text-muted small">{connection?.integration ?? apiCtx.connectorLabel}</div>
                   </div>
                   <span className={`badge fw-medium px-3 py-2 flex-shrink-0 ${connection?.status === 'active' ? 'bg-success bg-opacity-10 text-success' : 'bg-warning bg-opacity-10 text-warning'}`}>
                     <i className={`bi ${connection?.status === 'active' ? 'bi-check-circle-fill' : 'bi-hourglass-split'} me-1`} />
@@ -301,28 +278,9 @@ export default function UnifiedApiPickerMode() {
                   </span>
                 </div>
 
-                {/* Client count */}
-                <div className="card bg-light border-0 mb-4">
-                  <div className="card-body d-flex align-items-center gap-3 py-3 px-4">
-                    <div className="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 44, height: 44 }}>
-                      <i className="bi bi-people-fill text-primary" style={{ fontSize: 18 }} />
-                    </div>
-                    <div>
-                      <div className="text-muted small">Accounting clients</div>
-                      {clientCount !== null ? (
-                        <div className="fw-bold fs-3 lh-1 mt-1">{clientCount.toLocaleString()}</div>
-                      ) : (
-                        <div className="text-muted small mt-1">
-                          {connection?.status !== 'active' ? 'Awaiting activation' : 'Could not fetch'}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="d-flex gap-2 flex-wrap">
-                  <button className="btn btn-outline-primary btn-sm" onClick={() => fetchAllData(config.consumerId)}>
-                    <i className="bi bi-arrow-clockwise me-1" />Refresh
+                <div className="d-flex gap-2 flex-wrap mt-4">
+                  <button className="btn btn-primary btn-sm" onClick={() => setShowTest(true)}>
+                    <i className="bi bi-lightning-fill me-1" />Test connection
                   </button>
                   <button className="btn btn-outline-secondary btn-sm" onClick={handleDisconnect}>
                     Disconnect
@@ -362,7 +320,7 @@ export default function UnifiedApiPickerMode() {
                 <div><StepBadge n={4} />Check existing connections — <code>GET /consumers/{'{id}'}/connections</code></div>
                 <div><StepBadge n={5} />Create or update connection — <code>POST</code> or <code>PATCH /consumers/{'{id}'}/connections</code> with <code>integrationid</code></div>
                 <div><StepBadge n={6} />Redirect → OAuth2 on Chift</div>
-                <div><StepBadge n={7} />Return here — reload connections + clients</div>
+                <div><StepBadge n={7} />Return here — reload connection state</div>
               </div>
               {config.consumerId && (
                 <div className="alert alert-info small mb-0 mt-3 py-2">
@@ -374,6 +332,15 @@ export default function UnifiedApiPickerMode() {
             </div>
           )}
         </div>
+
+      {showTest && (
+        <TestConnectionModal
+          consumerId={config.consumerId}
+          config={config}
+          apiType={apiCtx.api}
+          onClose={() => setShowTest(false)}
+        />
+      )}
       </div>
     );
   }

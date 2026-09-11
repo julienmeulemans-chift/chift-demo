@@ -111,11 +111,56 @@ function SearchableSelect({ options, value, onChange, placeholder = 'Select…',
 
 // ── MappingRow ────────────────────────────────────────────────────────────────
 
-function MappingRow({ label, description, options, value, onChange, loading }) {
+function InfoTooltip({ text }) {
+  const [pos, setPos] = useState(null);
+  const iconRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    if (iconRef.current) {
+      const r = iconRef.current.getBoundingClientRect();
+      setPos({ top: r.top - 6, left: r.left + r.width / 2 });
+    }
+  };
+
+  return (
+    <span style={{ display: 'inline-block', marginLeft: 4, verticalAlign: 'middle' }}>
+      <span
+        ref={iconRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setPos(null)}
+        style={{ cursor: 'default', color: '#adb5bd', fontSize: 12, lineHeight: 1 }}
+      >ⓘ</span>
+      {pos && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: pos.top - 6,
+          left: pos.left,
+          transform: 'translate(-50%, -100%)',
+          zIndex: 9999,
+          background: '#1e1e1e', color: '#fff',
+          fontSize: 11, lineHeight: 1.45,
+          padding: '5px 9px', borderRadius: 5,
+          width: 200, textAlign: 'left',
+          pointerEvents: 'none',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+          boxSizing: 'border-box',
+        }}>
+          {text}
+        </div>,
+        document.body
+      )}
+    </span>
+  );
+}
+
+function MappingRow({ label, description, tooltip, options, value, onChange, loading }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid #f0f0f0' }}>
       <div style={{ flex: '0 0 160px' }}>
-        <div className="small fw-medium">{label}</div>
+        <div className="small fw-medium">
+          {label}
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </div>
         {description && <div className="text-muted" style={{ fontSize: 11, marginTop: 1 }}>{description}</div>}
       </div>
       <div style={{ flex: 1 }}>
@@ -338,23 +383,30 @@ export function ConfigureMappingsModal({ consumerId, config, apiCtx, connectionI
       {
         label: 'Journal',
         rows: [
-          { key: 'journal_sales', label: 'Sales journal', description: 'Customer invoices & orders', optKey: 'journalsSales' },
+          { key: 'journal_sales', label: 'Sales journal', description: 'Customer invoices & orders', optKey: 'journalsSales',
+            tooltip: 'Only customer invoice journals from the accounting software.' },
         ],
       },
       {
         label: 'Revenue accounts',
         rows: [
-          { key: 'account_physical',  label: 'Physical goods',  optKey: 'accountsIncome' },
-          { key: 'account_digital',   label: 'Digital products', optKey: 'accountsIncome' },
-          { key: 'account_shipping',  label: 'Shipping fees',   optKey: 'accountsIncome' },
+          { key: 'account_physical',  label: 'Physical goods',   optKey: 'accountsIncome',
+            tooltip: 'Only income accounts from the accounting software, filtered by account type.' },
+          { key: 'account_digital',   label: 'Digital products', optKey: 'accountsIncome',
+            tooltip: 'Only income accounts from the accounting software, filtered by account type.' },
+          { key: 'account_shipping',  label: 'Shipping fees',    optKey: 'accountsIncome',
+            tooltip: 'Only income accounts from the accounting software, filtered by account type.' },
         ],
       },
       {
         label: 'VAT codes',
         rows: [
-          { key: 'vat_standard', label: 'Standard rate', description: '21%',      optKey: 'vatCodes21' },
-          { key: 'vat_reduced',  label: 'Reduced rate',  description: '6% / 12%', optKey: 'vatCodesReduced' },
-          { key: 'vat_zero',     label: 'Zero rate',     description: '0%',        optKey: 'vatCodes0' },
+          { key: 'vat_standard', label: 'Standard rate', description: '21%',      optKey: 'vatCodes21',
+            tooltip: 'Only VAT codes from the accounting software with a 21% rate.' },
+          { key: 'vat_reduced',  label: 'Reduced rate',  description: '6% / 12%', optKey: 'vatCodesReduced',
+            tooltip: 'Only VAT codes from the accounting software with a rate between 0% and 21%.' },
+          { key: 'vat_zero',     label: 'Zero rate',     description: '0%',        optKey: 'vatCodes0',
+            tooltip: 'Only VAT codes from the accounting software with a 0% rate.' },
         ],
       },
     ];
@@ -364,25 +416,34 @@ export function ConfigureMappingsModal({ consumerId, config, apiCtx, connectionI
       {
         label: 'Journals',
         rows: [
-          { key: 'journal_sales',    label: 'Sales journal',    description: 'Customer invoices', optKey: 'journalsSales' },
-          { key: 'journal_purchase', label: 'Purchase journal', description: 'Supplier invoices', optKey: 'journalsPurchase' },
+          { key: 'journal_sales',    label: 'Sales journal',    description: 'Customer invoices', optKey: 'journalsSales',
+            tooltip: 'Only customer invoice journals from the accounting software.' },
+          { key: 'journal_purchase', label: 'Purchase journal', description: 'Supplier invoices', optKey: 'journalsPurchase',
+            tooltip: 'Only supplier invoice journals from the accounting software.' },
         ],
       },
       {
         label: 'Ledger accounts',
         rows: [
-          { key: 'account_revenue',          label: 'Revenue',          optKey: 'accountsIncome' },
-          { key: 'account_expense',          label: 'Expense',          optKey: 'accountsExpense' },
-          { key: 'account_vat_payable',      label: 'VAT payable',      optKey: 'accountsVat' },
-          { key: 'account_vat_recoverable',  label: 'VAT recoverable',  optKey: 'accountsVat' },
+          { key: 'account_revenue',         label: 'Revenue',         optKey: 'accountsIncome',
+            tooltip: 'Only income accounts from the accounting software, filtered by account type.' },
+          { key: 'account_expense',         label: 'Expense',         optKey: 'accountsExpense',
+            tooltip: 'Only expense accounts from the accounting software, filtered by account type.' },
+          { key: 'account_vat_payable',     label: 'VAT payable',     optKey: 'accountsVat',
+            tooltip: 'Only VAT accounts from the accounting software, filtered by account type.' },
+          { key: 'account_vat_recoverable', label: 'VAT recoverable', optKey: 'accountsVat',
+            tooltip: 'Only VAT accounts from the accounting software, filtered by account type.' },
         ],
       },
       {
         label: 'VAT codes',
         rows: [
-          { key: 'vat_21', label: '21%', description: 'Standard rate', optKey: 'vatCodes21' },
-          { key: 'vat_6',  label: '6%',  description: 'Reduced rate',  optKey: 'vatCodes6' },
-          { key: 'vat_0',  label: '0%',  description: 'Exempt',        optKey: 'vatCodes0' },
+          { key: 'vat_21', label: '21%', description: 'Standard rate', optKey: 'vatCodes21',
+            tooltip: 'Only VAT codes from the accounting software with a 21% rate.' },
+          { key: 'vat_6',  label: '6%',  description: 'Reduced rate',  optKey: 'vatCodes6',
+            tooltip: 'Only VAT codes from the accounting software with a 6% rate.' },
+          { key: 'vat_0',  label: '0%',  description: 'Exempt',        optKey: 'vatCodes0',
+            tooltip: 'Only VAT codes from the accounting software with a 0% rate.' },
         ],
       },
     ];
@@ -416,6 +477,7 @@ export function ConfigureMappingsModal({ consumerId, config, apiCtx, connectionI
           key={row.key}
           label={row.label}
           description={row.description}
+          tooltip={row.tooltip}
           options={resources[row.optKey] ?? []}
           value={mappings[row.key] ?? ''}
           onChange={val => setMapping(row.key, val)}

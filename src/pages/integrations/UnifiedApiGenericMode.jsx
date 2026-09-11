@@ -85,6 +85,15 @@ export default function UnifiedApiGenericMode() {
         failCall('conn_load', `HTTP ${connRes.status}`);
       }
 
+      // ── Intentional bad call — demonstrates error observability ──────
+      const badEndpoint = apiCtx.api === 'Accounting'
+        ? `/consumers/${consumerId}/accounting/clients?page=-1`
+        : `/consumers/${consumerId}/pos/products?page=-1`;
+      logCall({ id: 'bad_call_demo', method: 'GET', endpoint: badEndpoint.replace(`/consumers/${consumerId}`, '') });
+      fetch(`${config.baseUrl}${badEndpoint}`, { headers: hdrs })
+        .then(r => failCall('bad_call_demo', `HTTP ${r.status} — invalid page number`))
+        .catch(e => failCall('bad_call_demo', e.message));
+
       setStatus(conn ? 'success' : 'idle');
     } catch (err) {
       setError(`Could not load data: ${err.message}`);

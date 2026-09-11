@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getToken, buildHeaders, extractCount } from '../lib/chiftApi.js';
 
@@ -74,10 +74,14 @@ export function TestConnectionModal({ consumerId, config, apiType, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
   const [data,    setData]    = useState(null);
+  const didRun = useRef(false);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    runTests();
+    if (!didRun.current) {
+      didRun.current = true;
+      runTests();
+    }
     return () => { document.body.style.overflow = ''; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

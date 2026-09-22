@@ -21,11 +21,12 @@ export default function Settings() {
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const saveField = (key, value) => {
-    const updated = { ...form, [key]: value };
-    setForm(updated);
+    let updated = { ...form, [key]: value };
     if (['clientId', 'clientSecret', 'accountId'].includes(key) && value !== config[key]) {
       invalidateToken();
+      updated = { ...updated, consumerId: '' };
     }
+    setForm(updated);
     setConfig(updated);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

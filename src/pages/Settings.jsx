@@ -177,6 +177,30 @@ export default function Settings() {
                   )}
                 </div>
               </Field>
+
+              <Field label="Brand color" hint="Applied as the primary color across the app. Click the swatch to open the color picker — use the eyedropper to pick directly from the screen.">
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="color"
+                    className="form-control form-control-color"
+                    value={form.appColor || '#0d6efd'}
+                    onChange={(e) => set('appColor', e.target.value)}
+                    onBlur={(e) => saveField('appColor', e.target.value)}
+                    title="Pick brand color"
+                    style={{ width: 48, height: 38, padding: 2, cursor: 'pointer' }}
+                  />
+                  <span className="font-monospace small text-muted">{form.appColor || '#0d6efd'}</span>
+                  {form.appColor && form.appColor !== '#0d6efd' && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={() => saveField('appColor', '#0d6efd')}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </Field>
             </div>
           </div>
         </div>

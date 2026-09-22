@@ -39,11 +39,64 @@ export default function Layout({ children }) {
   const navigate       = useNavigate();
   const location       = useLocation();
   const { config }     = useChiftConfig();
-  const appName        = config.appName || 'AcmeCorp';
-  const appLogo        = config.appLogo || '';
+  const appName        = config.appName  || 'AcmeCorp';
+  const appLogo        = config.appLogo  || '';
+  const appColor       = config.appColor || '#0d6efd';
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => { document.title = appName; }, [appName]);
+
+  // Apply primary color override via Bootstrap CSS variables + button overrides
+  useEffect(() => {
+    const hex = appColor.replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const rgb = `${r}, ${g}, ${b}`;
+
+    const darken = (amount) => {
+      const dr = Math.max(0, r - amount).toString(16).padStart(2, '0');
+      const dg = Math.max(0, g - amount).toString(16).padStart(2, '0');
+      const db = Math.max(0, b - amount).toString(16).padStart(2, '0');
+      return `#${dr}${dg}${db}`;
+    };
+
+    const root = document.documentElement;
+    root.style.setProperty('--bs-primary',        appColor);
+    root.style.setProperty('--bs-primary-rgb',    rgb);
+    root.style.setProperty('--bs-link-color',     appColor);
+    root.style.setProperty('--bs-link-color-rgb', rgb);
+
+    // Bootstrap compiles button colors separately — override via injected style tag
+    let styleEl = document.getElementById('chift-color-override');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'chift-color-override';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = `
+      .btn-primary {
+        --bs-btn-bg: ${appColor};
+        --bs-btn-border-color: ${appColor};
+        --bs-btn-hover-bg: ${darken(20)};
+        --bs-btn-hover-border-color: ${darken(25)};
+        --bs-btn-active-bg: ${darken(25)};
+        --bs-btn-active-border-color: ${darken(30)};
+        --bs-btn-disabled-bg: ${appColor};
+        --bs-btn-disabled-border-color: ${appColor};
+      }
+      .btn-outline-primary {
+        --bs-btn-color: ${appColor};
+        --bs-btn-border-color: ${appColor};
+        --bs-btn-hover-bg: ${appColor};
+        --bs-btn-hover-border-color: ${appColor};
+        --bs-btn-active-bg: ${appColor};
+        --bs-btn-active-border-color: ${appColor};
+        --bs-btn-disabled-color: ${appColor};
+        --bs-btn-disabled-border-color: ${appColor};
+      }
+    `;
+  }, [appColor]);
 
   // Close drawer on route change
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);

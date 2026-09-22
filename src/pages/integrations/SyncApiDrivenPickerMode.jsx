@@ -252,7 +252,7 @@ export default function SyncApiDrivenPickerMode() {
           </div>
         )}
 
-        <div className="card border-0 shadow-sm" style={{ background: 'rgba(13, 110, 253, 0.04)' }}>
+        <div className="card border-0 shadow-sm" style={{ background: 'rgba(var(--bs-primary-rgb), 0.04)' }}>
           <div className="card-body p-4">
             {status === 'loading' ? (
               <div className="d-flex align-items-center gap-3 py-2">
@@ -380,7 +380,7 @@ export default function SyncApiDrivenPickerMode() {
       )}
 
       {/* Connector grid */}
-      <div className="rounded-3 p-4 shadow-sm" style={{ background: 'rgba(13, 110, 253, 0.04)' }}>
+      <div className="rounded-3 p-4 shadow-sm" style={{ background: 'rgba(var(--bs-primary-rgb), 0.04)' }}>
         <div className="d-flex align-items-center justify-content-between mb-3">
           <div>
             <h6 className="mb-0 fw-semibold">Configure the synchronization with your accounting software</h6>

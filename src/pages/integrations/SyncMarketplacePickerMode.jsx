@@ -70,7 +70,7 @@ export default function SyncMarketplacePickerMode() {
       )}
 
       {/* Connector grid */}
-      <div className="rounded-3 p-4 shadow-sm" style={{ background: 'rgba(13, 110, 253, 0.04)' }}>
+      <div className="rounded-3 p-4 shadow-sm" style={{ background: 'rgba(var(--bs-primary-rgb), 0.04)' }}>
         <div className="d-flex align-items-center justify-content-between mb-3">
           <div>
             <h6 className="mb-0 fw-semibold">Set up your accounting synchronization</h6>

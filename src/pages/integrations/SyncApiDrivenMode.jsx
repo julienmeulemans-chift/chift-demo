@@ -192,7 +192,7 @@ export default function SyncApiDrivenMode() {
         </div>
       )}
 
-      <div className="card border-0 shadow-sm" style={{ background: 'rgba(13, 110, 253, 0.04)' }}>
+      <div className="card border-0 shadow-sm" style={{ background: 'rgba(var(--bs-primary-rgb), 0.04)' }}>
         <div className="card-body p-4">
           <div className="d-flex align-items-center gap-3 mb-4">
             <div className="rounded-3 bg-light d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 56, height: 56 }}>
